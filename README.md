@@ -8,7 +8,7 @@
 
 ---
 
-## 📋 Executive Summary.
+## 📋 Executive Summary
 
 **Remedy-AI** is an enterprise-grade machine learning application that leverages ensemble methods to predict cardiovascular disease risk and provide evidence-based health recommendations. The system combines three predictive models (Logistic Regression, Random Forest, and Voting Classifier) to deliver robust risk assessments with 90%+ accuracy benchmarks on medical datasets.
 
