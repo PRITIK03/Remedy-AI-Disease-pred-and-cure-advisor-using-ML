@@ -973,6 +973,5 @@ docker build -t remedy-ai .
 gunicorn --workers 4 app:app
 ```
 
----
 
 *Made with ❤️ for healthcare and machine learning enthusiasts*
