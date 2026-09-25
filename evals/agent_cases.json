@@ -1,0 +1,107 @@
+{
+  "description": "Phase 5 agent trajectory cases — synthetic, deterministic, stubbed externals. Each case pins the expected route and outcome of the guidance workflow.",
+  "cases": [
+    {
+      "id": "normal_low_risk",
+      "scenario": "Healthy profile, low model probability, RAG and LLM healthy",
+      "assessment_profile": "healthy",
+      "model_probability": 0.3483,
+      "rag_mode": "ok",
+      "llm_mode": "ok",
+      "expected": {
+        "route": "finalize",
+        "review_required": false,
+        "workflow_status": "finalized",
+        "guidance_valid": true
+      }
+    },
+    {
+      "id": "high_risk_review",
+      "scenario": "Sick profile, probability >= 0.75 forces human review",
+      "assessment_profile": "sick",
+      "model_probability": 0.9123,
+      "rag_mode": "ok",
+      "llm_mode": "ok",
+      "expected": {
+        "route": "human_review",
+        "review_required": true,
+        "review_reason_contains": "high_risk_model_output",
+        "workflow_status": "pending_review"
+      }
+    },
+    {
+      "id": "missing_assessment",
+      "scenario": "Unknown assessment id routes to error",
+      "assessment_profile": "missing",
+      "rag_mode": "ok",
+      "llm_mode": "ok",
+      "expected": {
+        "route": "error",
+        "workflow_status": "failed",
+        "errors_contain": "assessment_not_found"
+      }
+    },
+    {
+      "id": "rag_unavailable",
+      "scenario": "RAG unreachable degrades to constrained guidance + review",
+      "assessment_profile": "healthy",
+      "rag_mode": "unavailable",
+      "llm_mode": "ok",
+      "expected": {
+        "route": "human_review",
+        "review_required": true,
+        "guidance_valid": true,
+        "constrained_fallback": true
+      }
+    },
+    {
+      "id": "llm_malformed",
+      "scenario": "LLM returns schema-invalid JSON — terminal failure, no retry",
+      "assessment_profile": "healthy",
+      "rag_mode": "ok",
+      "llm_mode": "malformed",
+      "expected": {
+        "route": "error",
+        "workflow_status": "failed",
+        "llm_error": true
+      }
+    },
+    {
+      "id": "llm_outage",
+      "scenario": "LLM network outage — retried to max attempts then failure",
+      "assessment_profile": "healthy",
+      "rag_mode": "ok",
+      "llm_mode": "outage",
+      "expected": {
+        "route": "error",
+        "workflow_status": "failed",
+        "max_attempts": 3
+      }
+    },
+    {
+      "id": "fabricated_citations_review",
+      "scenario": "LLM cites evidence that was not retrieved — flag forces review",
+      "assessment_profile": "healthy",
+      "model_probability": 0.3483,
+      "rag_mode": "ok",
+      "llm_mode": "fabricated_citations",
+      "expected": {
+        "route": "human_review",
+        "review_required": true,
+        "safety_flags_contain": "unverified_citations_dropped"
+      }
+    },
+    {
+      "id": "empty_knowledge_base",
+      "scenario": "No documents ingested — constrained response, review",
+      "assessment_profile": "healthy",
+      "rag_mode": "empty",
+      "llm_mode": "ok",
+      "expected": {
+        "route": "human_review",
+        "review_required": true,
+        "constrained_fallback": true
+      }
+    }
+  ]
+}

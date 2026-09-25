@@ -31,6 +31,11 @@ class WorkflowFailedError(RuntimeError):
     """The workflow could not produce guidance (provider failure etc.)."""
 
 
+class GuidanceNotConfiguredError(RuntimeError):
+    """The guidance capability is not configured on this deployment
+    (LLM/embedding provider credentials missing)."""
+
+
 class ReviewPendingError(RuntimeError):
     """Guidance was generated but awaits human review (high-risk/flagged)."""
 
@@ -58,7 +63,10 @@ def run_guidance_workflow(db, assessment_id: str, llm_client=None) -> dict[str, 
     if final.get("model_result") is None:
         raise AssessmentNotFoundError(assessment_id)
 
+    metadata = final.get("metadata") or {}
     if final.get("llm_error"):
+        if metadata.get("llm_unconfigured"):
+            raise GuidanceNotConfiguredError(final["llm_error"])
         raise WorkflowFailedError(final["llm_error"])
 
     if final.get("review_required"):

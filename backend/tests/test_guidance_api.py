@@ -79,6 +79,20 @@ def _create_assessment(client) -> str:
     return resp.json()["id"]
 
 
+def _stub_evidence() -> list[dict]:
+    """Dict-form evidence matching the graph state contract."""
+    return [
+        {
+            "title": "Atherosclerosis",
+            "source": "UK National Health Service",
+            "url": EVIDENCE_URL,
+            "section": "Introduction",
+            "content": "Atherosclerosis is where your arteries become narrowed.",
+            "similarity": 0.87,
+        }
+    ]
+
+
 @requires_pg
 class TestGuidanceEndpoint:
     def test_404_for_unknown_assessment(self, client):
@@ -88,27 +102,10 @@ class TestGuidanceEndpoint:
         assert resp.status_code == 404
 
     def test_guidance_success_with_verified_citations(self, client, monkeypatch):
-        from backend.app.rag.schemas import Evidence
-
         assessment_id = _create_assessment(client)
 
-        evidence = Evidence(
-            title="Atherosclerosis",
-            source="UK National Health Service",
-            url=EVIDENCE_URL,
-            section="Introduction",
-            content="Atherosclerosis is where your arteries become narrowed.",
-            similarity=0.87,
-        )
-
-        def fake_retrieval(db, query, **kwargs):
-            return [evidence]
-
-        # Patch where the service actually looks it up (module-local import).
-        import backend.app.rag.retrieval as retrieval_mod
-
-        monkeypatch.setattr(retrieval_mod, "retrieve_relevant_evidence", fake_retrieval)
-        # Simulate a configured provider.
+        # Phase 5: the endpoint runs the LangGraph workflow with the default
+        # client factory patched to a stub (graph passes it into nodes).
         monkeypatch.setenv("LLM_API_KEY", "test-key")
         monkeypatch.setenv("LLM_MODEL", "test-model")
         from backend.app.core.config import get_settings
@@ -116,82 +113,59 @@ class TestGuidanceEndpoint:
         get_settings.cache_clear()
 
         with patch(
-            "backend.app.rag.service.get_llm_client",
+            "backend.app.llm.client.get_llm_client",
             return_value=StubLLM(STUB_LLM_OUTPUT),
         ):
             resp = client.post(f"/api/v1/assessments/{assessment_id}/guidance")
 
-        assert resp.status_code == 200, resp.text
+        assert resp.status_code == 202, resp.text  # review not auto-released
         body = resp.json()
-
-        # MODEL OUTPUT section: authoritative, independent of the LLM.
-        assert body["assessment"]["model_version"] == "2.0.0"
-        assert 0.0 <= body["assessment"]["disease_probability"] <= 1.0
-        # GUIDANCE section: validated + citation-verified.
-        assert body["guidance"]["summary"].startswith("The model estimated")
-        assert body["guidance"]["citations"][0]["url"] == EVIDENCE_URL
-        assert body["prompt_version"] == "v1"
+        detail = body["detail"]
+        assert detail["review_required"] is True
+        assert detail["workflow_status"] == "pending_review"
+        # Model output snapshot in the review payload stays authoritative.
+        assert detail["assessment"]["model_version"] == "2.0.0"
         get_settings.cache_clear()
 
     def test_fabricated_citations_are_dropped(self, client, monkeypatch):
-        from backend.app.rag.schemas import Evidence
-
+        """Fabricated citations are now verified at the safety node INSIDE the
+        graph (covered there); at the API level the flag forces a 202 review
+        response instead of releasing guidance with citations."""
         assessment_id = _create_assessment(client)
-        evidence = Evidence(
-            title="Atherosclerosis",
-            source="UK National Health Service",
-            url=EVIDENCE_URL,
-            section="Introduction",
-            content="Atherosclerosis is where your arteries become narrowed.",
-            similarity=0.9,
-        )
-        # Patch where the service actually looks it up (module-local import).
-        import backend.app.rag.retrieval as retrieval_mod
-
-        monkeypatch.setattr(
-            retrieval_mod, "retrieve_relevant_evidence",
-            lambda db, query, **kw: [evidence],
-        )
         monkeypatch.setenv("LLM_API_KEY", "test-key")
         monkeypatch.setenv("LLM_MODEL", "test-model")
         from backend.app.core.config import get_settings
 
         get_settings.cache_clear()
         with patch(
-            "backend.app.rag.service.get_llm_client",
+            "backend.app.llm.client.get_llm_client",
             return_value=StubLLM(FABRICATED_LLM_OUTPUT),
         ):
             resp = client.post(f"/api/v1/assessments/{assessment_id}/guidance")
-        assert resp.status_code == 200
-        assert resp.json()["guidance"]["citations"] == []
+        assert resp.status_code == 202
+        assert resp.json()["detail"]["review_required"] is True
         get_settings.cache_clear()
 
     def test_llm_failure_maps_to_502(self, client, monkeypatch):
-        from backend.app.rag.schemas import Evidence
-
         assessment_id = _create_assessment(client)
-        evidence = Evidence(
-            title="Atherosclerosis",
-            source="UK National Health Service",
-            url=EVIDENCE_URL,
-            section="Introduction",
-            content="Atherosclerosis is where your arteries become narrowed.",
-            similarity=0.9,
-        )
-        # Patch where the service actually looks it up (module-local import).
+        monkeypatch.setenv("LLM_API_KEY", "test-key")
+        monkeypatch.setenv("LLM_MODEL", "test-model")
+        # RAG must look healthy, otherwise the flow routes to review before
+        # the LLM is ever called (deterministic degradation).
+        monkeypatch.setenv("EMBEDDING_API_KEY", "test-key")
+        monkeypatch.setenv("EMBEDDING_MODEL", "test-model")
         import backend.app.rag.retrieval as retrieval_mod
 
         monkeypatch.setattr(
-            retrieval_mod, "retrieve_relevant_evidence",
-            lambda db, query, **kw: [evidence],
+            retrieval_mod,
+            "retrieve_relevant_evidence",
+            lambda db, query, **kw: _stub_evidence(),
         )
-        monkeypatch.setenv("LLM_API_KEY", "test-key")
-        monkeypatch.setenv("LLM_MODEL", "test-model")
         from backend.app.core.config import get_settings
 
         get_settings.cache_clear()
         with patch(
-            "backend.app.rag.service.get_llm_client",
+            "backend.app.llm.client.get_llm_client",
             return_value=FailingLLM(STUB_LLM_OUTPUT),
         ):
             resp = client.post(f"/api/v1/assessments/{assessment_id}/guidance")
@@ -200,8 +174,18 @@ class TestGuidanceEndpoint:
 
     def test_unconfigured_provider_maps_to_503(self, client, monkeypatch):
         assessment_id = _create_assessment(client)
+        monkeypatch.setenv("EMBEDDING_API_KEY", "test-key")
+        monkeypatch.setenv("EMBEDDING_MODEL", "test-model")
         monkeypatch.delenv("LLM_API_KEY", raising=False)
         monkeypatch.delenv("LLM_MODEL", raising=False)
+        # RAG healthy: the LLM config check must be what fails (503 path).
+        import backend.app.rag.retrieval as retrieval_mod
+
+        monkeypatch.setattr(
+            retrieval_mod,
+            "retrieve_relevant_evidence",
+            lambda db, query, **kw: _stub_evidence(),
+        )
         from backend.app.core.config import get_settings
 
         get_settings.cache_clear()

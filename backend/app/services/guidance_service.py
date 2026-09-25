@@ -35,6 +35,15 @@ def run_guidance(db: Session, assessment_id: UUID) -> dict:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assessment not found",
         ) from exc
+    except agent_service.GuidanceNotConfiguredError as exc:
+        # Capability exists in code but this deployment lacks credentials.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "AI guidance is not configured on this server. "
+                "Set LLM_API_KEY / LLM_MODEL (see .env.example)."
+            ),
+        ) from exc
     except agent_service.ReviewPendingError as exc:
         # Flagged/high-risk case: do NOT release generated guidance. Tell
         # the client review is pending (202 Accepted, not completed).

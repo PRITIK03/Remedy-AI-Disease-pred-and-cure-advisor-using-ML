@@ -34,7 +34,14 @@ type GuidanceState =
   | { phase: "idle" }
   | { phase: "loading"; startedAt: number }
   | { phase: "ready"; data: GuidanceResponse }
+  | { phase: "review"; message: string }
   | { phase: "error"; message: string; retriable: boolean };
+
+interface ReviewDetailShape {
+  message?: string;
+  review_required?: boolean;
+  workflow_status?: string;
+}
 
 interface AiGuidanceProps {
   assessmentId: string;
@@ -60,6 +67,20 @@ export function AiGuidance({ assessmentId }: AiGuidanceProps) {
       setState({ phase: "ready", data });
     } catch (err) {
       if (err instanceof ApiError) {
+        // 202: the workflow flagged this case for human review — the
+        // guidance exists but is deliberately NOT released to the client.
+        if (err.status === 202) {
+          const detail = (
+            err as ApiError & { detail?: ReviewDetailShape }
+          ).detail;
+          setState({
+            phase: "review",
+            message:
+              detail?.message ??
+              "This assessment has been flagged for additional review.",
+          });
+          return;
+        }
         const retriable = err.status === 502 || err.status === 0;
         setState({
           phase: "error",
@@ -123,6 +144,8 @@ export function AiGuidance({ assessmentId }: AiGuidanceProps) {
 
             {state.phase === "loading" && <GuidanceLoading />}
 
+            {state.phase === "review" && <ReviewPending message={state.message} />}
+
             {state.phase === "error" && (
               <div className="space-y-2 text-sm">
                 <p className="text-muted-foreground">{state.message}</p>
@@ -139,6 +162,27 @@ export function AiGuidance({ assessmentId }: AiGuidanceProps) {
         </CollapsibleContent>
       </Card>
     </Collapsible>
+  );
+}
+
+function ReviewPending({ message }: { message: string }) {
+  return (
+    <div
+      role="status"
+      className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm"
+    >
+      <p className="flex items-start gap-2">
+        <AlertTriangle
+          className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
+          aria-hidden="true"
+        />
+        <span>{message}</span>
+      </p>
+      <p className="mt-2 pl-6 text-xs text-muted-foreground">
+        Guidance for flagged cases is held until the review is completed. The
+        model output above remains valid and unchanged.
+      </p>
+    </div>
   );
 }
 

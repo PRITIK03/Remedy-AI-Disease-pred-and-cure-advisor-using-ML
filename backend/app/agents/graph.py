@@ -79,9 +79,17 @@ def build_guidance_graph(db, assessment_id: str, llm_client=None):
         }
 
     def finalize(state: GuidanceGraphState) -> dict[str, Any]:
+        from backend.app.agents.routing import review_required_for
+
         if state.get("workflow_status") == "pending_review":
             return {}  # do not overwrite the pending marker
-        return {"workflow_status": "finalized"}
+        return {
+            "workflow_status": "finalized",
+            "review_required": review_required_for(state),
+            "review_status": (
+                "pending" if review_required_for(state) else "not_required"
+            ),
+        }
 
     def error_node(state: GuidanceGraphState) -> dict[str, Any]:
         if state.get("workflow_status") != "pending_review":
@@ -92,6 +100,14 @@ def build_guidance_graph(db, assessment_id: str, llm_client=None):
     builder.add_node("human_review", human_review)
     builder.add_node("finalize", finalize)
     builder.add_node("error", error_node)
+
+    # Record the routing decision on the finalize path too, so every
+    # response carries an explicit review_required value.
+    def finalize_router(state: GuidanceGraphState) -> str:
+        return "finalize"
+
+    builder.add_edge("review_router", "human_review")
+    builder.add_edge("human_review", "finalize")
 
     builder.add_edge(START, "load_assessment")
     builder.add_conditional_edges(

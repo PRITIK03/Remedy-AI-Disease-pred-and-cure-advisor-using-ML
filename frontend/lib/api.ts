@@ -55,6 +55,7 @@ async function request<T>(
     if (!res.ok) {
       let code = "http_error";
       let message = `Request failed with status ${res.status}`;
+      let detailBody: unknown = undefined;
       try {
         const body = (await res.json()) as {
           detail?: unknown;
@@ -66,6 +67,13 @@ async function request<T>(
           message = body.error.message;
         } else if (typeof body.detail === "string") {
           message = body.detail;
+        } else if (body.detail && typeof body.detail === "object") {
+          // Structured detail (e.g. 202 review-pending payload from the
+          // guidance workflow): carried on the error for callers to inspect.
+          detailBody = body.detail;
+          const d = body.detail as { message?: string };
+          if (typeof d.message === "string") message = d.message;
+          code = "structured_detail";
         }
         if (body.request_id) {
           throw new ApiError(res.status, code, message, body.request_id);
@@ -74,7 +82,9 @@ async function request<T>(
         if (parseError instanceof ApiError) throw parseError;
         // fall through with default message
       }
-      throw new ApiError(res.status, code, message);
+      const err = new ApiError(res.status, code, message);
+      (err as ApiError & { detail?: unknown }).detail = detailBody;
+      throw err;
     }
     return (await res.json()) as T;
   } catch (error) {

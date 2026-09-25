@@ -39,12 +39,17 @@ def route_after_safety(state: GuidanceGraphState) -> str:
         return "human_review"
 
     # 3. Degraded RAG (evidence missing when it should exist) forces review.
-    metadata = state.get("metadata") or {}
     if state.get("rag_error") and not state.get("evidence_available"):
         return "human_review"
 
     # 4. Normal successful output.
     return "finalize"
+
+
+def review_required_for(state: GuidanceGraphState) -> bool:
+    """Whether THIS state will be routed to review (mirror of the route
+    decision, used by finalize to stamp an explicit value)."""
+    return route_after_safety(state) == "human_review"
 
 
 def review_reason(state: GuidanceGraphState) -> str | None:

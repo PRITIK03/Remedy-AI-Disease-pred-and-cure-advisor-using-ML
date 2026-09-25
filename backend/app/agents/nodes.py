@@ -184,7 +184,10 @@ def make_generate_guidance_node(db, llm_client=None):
 
     Never calls OpenRouter directly. Transient LLM network failures are
     retried; schema-validation failures are NOT (they'd fail again).
+    An explicitly injected client (tests / alternate provider wiring)
+    bypasses the configuration check by design.
     """
+    injected = llm_client is not None
 
     def _node(state: GuidanceGraphState) -> dict[str, Any]:
         from backend.app.llm.client import LLMError, get_llm_client
@@ -217,8 +220,9 @@ def make_generate_guidance_node(db, llm_client=None):
         features = state.get("assessment") or {}
 
         # Configuration errors fail fast — never retried (phase rule).
+        # Injected clients (tests / alternate wiring) bypass this check.
         settings = get_settings()
-        if not settings.llm_configured:
+        if not injected and not settings.llm_configured:
             return {
                 "llm_error": "LLM provider not configured",
                 "errors": ["llm_not_configured"],

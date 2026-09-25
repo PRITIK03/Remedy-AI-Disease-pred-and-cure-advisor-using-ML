@@ -107,6 +107,8 @@ export interface GuidanceDetail {
 
   `assessment` is the authoritative MODEL OUTPUT snapshot — the LLM cannot
   produce or alter it. `guidance` is AI-GENERATED, evidence-grounded text.
+  Phase 5 adds minimal workflow metadata (the API answers 202 when review is
+  required, with no guidance payload).
  */
 export interface GuidanceResponse {
   assessment: {
@@ -119,6 +121,17 @@ export interface GuidanceResponse {
   guidance: GuidanceDetail;
   prompt_version: string;
   generated_at: string;
+  workflow_status: "completed" | "pending_review";
+  review_required: boolean;
+  safety_flags?: string[];
+}
+
+/** 202 payload when the workflow flags the case for human review. */
+export interface ReviewPendingDetail {
+  message: string;
+  review_required: true;
+  workflow_status: "pending_review";
+  assessment: GuidanceResponse["assessment"];
 }
 
 export interface ApiError {
