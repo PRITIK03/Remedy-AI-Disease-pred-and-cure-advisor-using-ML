@@ -32,7 +32,9 @@ class Settings(BaseSettings):
     models_dir: str = ""  # empty → ml.config default (models/v2)
 
     # --- Databases ---------------------------------------------------------- #
-    database_url: str = "postgresql+psycopg://postgres:1234@localhost:5432/remedy_ai"
+    # Default contains NO credentials: real values come from the gitignored
+    # .env (see .env.example). Never put a real password in source code.
+    database_url: str = "postgresql+psycopg://postgres:PLACEHOLDER@localhost:5432/remedy_ai"
     redis_url: str = "redis://localhost:6379/0"
 
     # --- CORS --------------------------------------------------------------- #

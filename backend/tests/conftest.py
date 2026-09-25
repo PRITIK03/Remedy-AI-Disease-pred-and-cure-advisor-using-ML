@@ -18,14 +18,37 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Load the repo-root .env (gitignored) BEFORE anything reads os.environ, so
+# test DB credentials come from configuration, never from hardcoded source.
+_env_file = PROJECT_ROOT / ".env"
+if _env_file.exists():
+    with _env_file.open(encoding="utf-8") as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if not _line or _line.startswith("#") or "=" not in _line:
+                continue
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
+
 # Test settings BEFORE importing the app (get_settings is lru_cached).
 os.environ.setdefault("APP_ENV", "test")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 
-ADMIN_URL = "postgresql+psycopg://postgres:1234@localhost:5432/postgres"
+# Test DB credentials come from the environment / gitignored .env — never
+# hardcoded in source. TEST_DB_USER/TEST_DB_PASSWORD are set in .env.example
+# for local development; CI provides its own values.
+TEST_DB_HOST = os.environ.get("TEST_DB_HOST", "localhost")
+TEST_DB_PORT = os.environ.get("TEST_DB_PORT", "5432")
+TEST_DB_USER = os.environ.get("TEST_DB_USER", "postgres")
+TEST_DB_PASSWORD = os.environ.get("TEST_DB_PASSWORD", "")
 TEST_DB = "remedy_ai_test"
+ADMIN_URL = (
+    f"postgresql+psycopg://{TEST_DB_USER}:{TEST_DB_PASSWORD}"
+    f"@{TEST_DB_HOST}:{TEST_DB_PORT}/postgres"
+)
 TEST_DATABASE_URL = (
-    f"postgresql+psycopg://postgres:1234@localhost:5432/{TEST_DB}"
+    f"postgresql+psycopg://{TEST_DB_USER}:{TEST_DB_PASSWORD}"
+    f"@{TEST_DB_HOST}:{TEST_DB_PORT}/{TEST_DB}"
 )
 
 
@@ -34,7 +57,8 @@ def _pg_reachable() -> bool:
         import psycopg
 
         with psycopg.connect(
-            host="localhost", port=5432, user="postgres", password="1234",
+            host=TEST_DB_HOST, port=int(TEST_DB_PORT), user=TEST_DB_USER,
+            password=TEST_DB_PASSWORD or None,
             dbname="postgres", connect_timeout=3,
         ):
             return True
@@ -72,7 +96,8 @@ def test_database_url() -> str:
 
     # Create the disposable test database.
     with psycopg.connect(
-        host="localhost", port=5432, user="postgres", password="1234",
+        host=TEST_DB_HOST, port=int(TEST_DB_PORT), user=TEST_DB_USER,
+        password=TEST_DB_PASSWORD or None,
         dbname="postgres", autocommit=True,
     ) as conn:
         exists = conn.execute(

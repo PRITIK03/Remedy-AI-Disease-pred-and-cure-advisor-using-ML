@@ -24,6 +24,8 @@ dependencies = [
     "pgvector>=0.3",
     "pyyaml>=6",
     "httpx>=0.27",
+    "langgraph>=1.0",
+    "langgraph-checkpoint-postgres>=2.0",
 ]
 
 [project.optional-dependencies]

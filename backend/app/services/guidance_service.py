@@ -1,63 +1,64 @@
-"""API-facing guidance service — glues assessment storage to the RAG/LLM
-flow and maps typed errors onto HTTP semantics."""
+"""API-facing guidance service — glues assessment storage to the LangGraph
+workflow (Phase 5) and maps typed errors onto HTTP semantics.
+
+Phase 5 change: the flow inside is now the LangGraph guidance graph
+(backend/app/agents/); the API contract is unchanged apart from the added
+workflow metadata fields (workflow_status, review_required, safety_flags).
+"""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.app.core.config import get_settings
 from backend.app.core.logging import get_logger
-from backend.app.schemas.guidance import AssessmentSnapshot, GuidanceDetail
-from backend.app.services import assessment_service
 
 logger = get_logger("backend.guidance_service")
 
 
 def run_guidance(db: Session, assessment_id: UUID) -> dict:
-    """Load the assessment, run RAG+LLM, return the response payload."""
-    from backend.app.rag.service import (
-        GuidanceError,
-        GuidanceUnavailableError,
-        generate_guidance,
-    )
+    """Run the LangGraph guidance workflow for one assessment.
 
-    row = assessment_service.get_assessment(db, assessment_id)
-    if row is None:
+    The graph reuses the existing services (assessment storage, RAG
+    retrieval, LLM abstraction, safety/citation validation) behind a
+    deterministic orchestration. Review-pending is surfaced as 202 so the
+    frontend can distinguish it from a normal response.
+    """
+    from backend.app.agents import service as agent_service
+
+    try:
+        return agent_service.run_guidance_workflow(db, str(assessment_id))
+    except agent_service.AssessmentNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assessment not found",
-        )
-
-    settings = get_settings()
-    try:
-        guidance = generate_guidance(db, row)
-    except GuidanceUnavailableError as exc:
-        # 503: the capability exists but this deployment can't serve it now.
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
-    except GuidanceError as exc:
-        logger.error("Guidance generation failed: %s", exc)
+    except agent_service.ReviewPendingError as exc:
+        # Flagged/high-risk case: do NOT release generated guidance. Tell
+        # the client review is pending (202 Accepted, not completed).
+        raise HTTPException(
+            status_code=status.HTTP_202_ACCEPTED,
+            detail={
+                "message": "This assessment has been flagged for additional review.",
+                "review_required": True,
+                "workflow_status": "pending_review",
+                "assessment": exc.payload.get("model_result"),
+            },
+        ) from exc
+    except agent_service.WorkflowFailedError as exc:
+        logger.error("Guidance workflow failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="AI guidance is temporarily unavailable. Please try again later.",
         ) from exc
-
-    snapshot = AssessmentSnapshot(
-        assessment_id=str(row.id),
-        model_version=row.model_version,
-        selected_model=row.selected_model,
-        predicted_disease=bool(row.predicted_disease),
-        disease_probability=round(float(row.disease_probability), 5),
-    )
-    detail = GuidanceDetail(**guidance)
-    return {
-        "assessment": snapshot,
-        "guidance": detail,
-        "prompt_version": settings.llm_prompt_version,
-        "generated_at": datetime.now(UTC),
-    }
+    except Exception as exc:  # noqa: BLE001 - operational safety net
+        logger.exception("Guidance workflow crashed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "AI guidance is not available on this deployment. "
+                "Providers may not be configured."
+            ),
+        ) from exc

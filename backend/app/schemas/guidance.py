@@ -37,3 +37,18 @@ class GuidanceResponse(BaseModel):
     guidance: GuidanceDetail
     prompt_version: str = Field(description="Prompt version used (audit trail).")
     generated_at: datetime
+    # --- Phase 5 workflow metadata (minimal; internal graph state never
+    # exposed). Absent from Phase 4 responses, so old clients that ignore
+    # unknown fields stay compatible.
+    workflow_status: str = Field(
+        default="completed",
+        description='"completed" or "pending_review".',
+    )
+    review_required: bool = Field(
+        default=False,
+        description="True when the case was flagged for human review.",
+    )
+    safety_flags: list[str] = Field(
+        default_factory=list,
+        description="Safety flags raised during the workflow (if any).",
+    )
