@@ -115,6 +115,9 @@ def resume_review(
     state["workflow_status"] = (
         "finalized" if decision == "approve" else "failed"
     )
+    # An approved review releases the held guidance; the response must no
+    # longer present itself as pending (it is the resume outcome).
+    state["review_required"] = False
     state["metadata"] = {
         **(state.get("metadata") or {}),
         "review_decision": decision,
@@ -143,10 +146,10 @@ def _to_response(state: dict[str, Any], guidance: Any) -> dict[str, Any]:
     from backend.app.core.config import get_settings
     from backend.app.rag.schemas import (
         Citation,
+        Evidence,
         HealthGuidanceResponse,
         verify_citations,
     )
-    from backend.app.rag.schemas import Evidence
     from backend.app.schemas.guidance import AssessmentSnapshot, GuidanceDetail
 
     validated = (

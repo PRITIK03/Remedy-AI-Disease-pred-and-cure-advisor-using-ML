@@ -36,6 +36,8 @@ const MOCK_GUIDANCE = {
   },
   prompt_version: "v1",
   generated_at: "2026-09-26T10:00:00Z",
+  workflow_status: "completed" as const,
+  review_required: false,
 };
 
 vi.mock("@/lib/api", async (importOriginal) => {
@@ -135,6 +137,32 @@ describe("AiGuidance", () => {
     await user.click(screen.getByRole("button", { name: /AI Health Guidance/i }));
     expect(await screen.findByText(/not configured on this server/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the review-required state on 202 without releasing guidance", async () => {
+    const reviewError = new ApiError(
+      202,
+      "structured_detail",
+      "This assessment has been flagged for additional review."
+    );
+    (reviewError as ApiError & { detail?: unknown }).detail = {
+      message: "This assessment has been flagged for additional review.",
+      review_required: true,
+      workflow_status: "pending_review",
+    };
+    mockedGetGuidance.mockRejectedValue(reviewError);
+    const user = userEvent.setup();
+    render(<AiGuidance assessmentId="abc" modelProbability={0.91} />);
+
+    await user.click(screen.getByRole("button", { name: /AI Health Guidance/i }));
+    expect(
+      await screen.findByText(/flagged for additional review/i)
+    ).toBeInTheDocument();
+    // No guidance content and no citation may leak in the review state.
+    expect(screen.queryByText("Sources")).not.toBeInTheDocument();
+    // Honest wording: no pretend clinician approval.
+    expect(screen.queryByText(/doctor approved/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/clinician reviewed/i)).not.toBeInTheDocument();
   });
 
   it("labels the block as AI-generated and not a diagnosis", async () => {

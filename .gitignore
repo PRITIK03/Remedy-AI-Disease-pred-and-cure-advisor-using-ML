@@ -58,6 +58,12 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 
+# LangGraph / LangSmith local runtime artifacts (tracing caches, local
+# checkpoint exports). Source, migrations, lock files stay tracked.
+.langsmith/
+.langchain/
+.langgraph/
+
 # Distributions
 dist/
 build/

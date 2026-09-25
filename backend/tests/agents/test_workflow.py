@@ -15,7 +15,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.tests.agents.conftest import (  # noqa: E402
-    EVIDENCE_URL,
     HIGH_RISK_MODEL_RESULT,
     FakeLLM,
     FakeMalformedLLM,
@@ -99,12 +98,7 @@ class TestNormalPath:
         """Adversarial LLM output claiming different numbers is ignored."""
         from backend.tests.agents.conftest import LLM_OUTPUT
 
-        patched_assessment(MODEL_RESULT_DEFAULT := {
-            "model_version": "2.0.0",
-            "selected_model": "logistic_regression",
-            "predicted_disease": False,
-            "disease_probability": 0.3483,
-        })
+        patched_assessment()
         patched_rag("ok")
 
         # LLM tries to overwrite the model result inside its own payload.
@@ -117,14 +111,6 @@ class TestNormalPath:
 
         assert final["model_result"]["disease_probability"] == 0.3483
         assert final["model_result"]["model_version"] == "2.0.0"
-
-
-MODEL_RESULT_DEFAULT = {
-    "model_version": "2.0.0",
-    "selected_model": "logistic_regression",
-    "predicted_disease": False,
-    "disease_probability": 0.3483,
-}
 
 
 # --------------------------------------------------------------------- #
@@ -325,8 +311,9 @@ class TestResumePath:
         graph, config = invoke_graph(assessment_id="a1")
         graph.invoke({"assessment_id": "a1"}, config)
 
-        import backend.app.agents.graph as graph_mod
         import unittest.mock as mock
+
+        import backend.app.agents.graph as graph_mod
 
         with mock.patch.object(graph_mod, "build_guidance_graph",
                                return_value=graph):

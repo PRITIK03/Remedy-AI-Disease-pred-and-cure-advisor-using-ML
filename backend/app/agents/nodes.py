@@ -80,8 +80,8 @@ def make_load_assessment_node(db, assessment_id: str):
     """
 
     def _node(state: GuidanceGraphState) -> dict[str, Any]:
-        from backend.app.services.assessment_service import get_assessment
         from backend.app.services import assessment_service
+        from backend.app.services.assessment_service import get_assessment
 
         row = get_assessment(db, __import__("uuid").UUID(assessment_id))
         if row is None:
@@ -122,7 +122,6 @@ def make_retrieve_evidence_node(db):
             RetrievalUnavailableError,
             retrieve_relevant_evidence,
         )
-        from backend.app.rag.service import build_retrieval_query
 
         settings = get_settings()
         if not settings.rag_configured:
@@ -298,13 +297,14 @@ def make_safety_check_node(db):
     """
 
     def _node(state: GuidanceGraphState) -> dict[str, Any]:
+        import re
+
+        from backend.app.rag.safety import detect_emergency
         from backend.app.rag.schemas import (
             Evidence,
             HealthGuidanceResponse,
             verify_citations,
         )
-        from backend.app.rag.safety import detect_emergency
-        import re
 
         raw_guidance = state.get("guidance")
         if raw_guidance is None:
@@ -334,7 +334,6 @@ def make_safety_check_node(db):
             flags.append("emergency_language_in_output")
 
         # 3. Guard against the LLM asserting diagnostic certainty.
-        import re
 
         if re.search(
             r"\byou (have|definitely have|do not have)\b", blob, re.IGNORECASE

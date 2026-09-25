@@ -14,9 +14,8 @@ from unittest.mock import patch
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-import pytest
 
-from backend.tests.conftest import requires_pg
+from backend.tests.conftest import requires_pg  # noqa: E402
 
 VALID_PAYLOAD = {
     "age": 45, "sex": 1, "cp": 0, "trestbps": 120, "chol": 180,

@@ -58,13 +58,13 @@ def load_cases() -> list[dict]:
 
 @pytest.mark.parametrize("case", load_cases(), ids=lambda c: c["id"])
 def test_agent_case(case, monkeypatch):
-    from backend.app.agents.graph import build_guidance_graph
     from backend.app.agents import nodes as nodes_mod
+    from backend.app.agents.graph import build_guidance_graph
     from backend.app.rag.schemas import HealthGuidanceResponse
     from backend.tests.agents.conftest import (
+        LLM_OUTPUT,
         FakeLLM,
         FakeMalformedLLM,
-        LLM_OUTPUT,
     )
 
     monkeypatch.setenv("LLM_API_KEY", "test-key")
