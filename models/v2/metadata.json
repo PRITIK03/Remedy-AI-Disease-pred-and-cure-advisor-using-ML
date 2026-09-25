@@ -1,0 +1,67 @@
+{
+  "model_name": "cardiovascular-disease-risk",
+  "model_version": "2.0.0",
+  "target": "disease",
+  "target_semantics": "1 = disease, 0 = no disease",
+  "source_target_semantics": "1 = no disease (healthy), 0 = disease (from source dataset)",
+  "target_transformation": "y_modern = 1 - y_source (documented in ml/config.py)",
+  "positive_class": 1,
+  "dataset": "heart.csv (Heart Attack Analysis & Prediction / UCI Cleveland derived)",
+  "dataset_source_url": "https://raw.githubusercontent.com/kb22/Heart-Disease-Prediction/master/dataset.csv",
+  "dataset_hash": "d235cad39b7bcc1d63c7b672146fb3b6108b861201d2e29e288ec7fe03e35082",
+  "features": [
+    "age",
+    "sex",
+    "cp",
+    "trestbps",
+    "chol",
+    "fbs",
+    "restecg",
+    "thalach",
+    "exang",
+    "oldpeak",
+    "slope",
+    "ca",
+    "thal"
+  ],
+  "feature_types": {
+    "numeric": [
+      "age",
+      "trestbps",
+      "chol",
+      "thalach",
+      "oldpeak"
+    ],
+    "binary": [
+      "sex",
+      "fbs",
+      "exang"
+    ],
+    "categorical_onehot": [
+      "cp",
+      "restecg",
+      "slope",
+      "ca",
+      "thal"
+    ]
+  },
+  "preprocessing": "median-impute+StandardScaler(numeric); passthrough(binary); most-frequent-impute+OneHot(categorical) via ColumnTransformer",
+  "calibration": "CalibratedClassifierCV(method=sigmoid, cv=5-fold stratified)",
+  "selected_model": "logistic_regression",
+  "selection_policy": "CV ROC-AUC primary; calibration secondary; parsimony within 0.02 AUC",
+  "training_seed": 42,
+  "test_size": 0.2,
+  "cv_folds": 5,
+  "python_version": "3.14.7",
+  "sklearn_version": "1.7.2",
+  "trained_at": "2026-09-25T10:16:11.528562+00:00",
+  "artifact_format": "joblib (sklearn Pipeline; load with same sklearn major.minor)",
+  "background_sample": "background_sample.joblib (80 raw TRAIN rows for SHAP background)",
+  "mlflow": {
+    "enabled": true,
+    "tracking_uri": "sqlite:///D:/GEN Ai Projects/Remedi AI new/Remedy-AI-Disease-pred-and-cure-advisor-using-ML/mlflow.db",
+    "experiment_name": "cardio-risk",
+    "experiment_id": "1",
+    "run_id": "3bfdb416aa4440948b6d7c2382faa9a0"
+  }
+}

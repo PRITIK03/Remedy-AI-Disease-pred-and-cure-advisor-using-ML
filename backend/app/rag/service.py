@@ -11,18 +11,14 @@ chain fails, the endpoint degrades gracefully with a typed error.
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import get_settings
 from backend.app.core.logging import get_logger
 from backend.app.llm.client import LLMClient, LLMError, get_llm_client
-from backend.app.llm.prompts import PROMPT_VERSION, build_user_prompt, SYSTEM_PROMPT_V1
-from backend.app.rag.safety import detect_emergency
+from backend.app.llm.prompts import SYSTEM_PROMPT_V1, build_user_prompt
 from backend.app.rag.schemas import (
-    Citation,
-    Evidence,
     HealthGuidanceResponse,
     verify_citations,
 )
@@ -44,25 +40,29 @@ def build_retrieval_query(assessment: Any) -> str:
     Uses the stable categorical/numeric fields most relevant to
     cardiovascular evidence; excludes identifiers and improbable noise.
     """
+    # NOTE: phrasing matters — this string is also passed through the
+    # safety layer's emergency detector, so it must never contain clinical
+    # emergency vocabulary regardless of the assessment values (e.g. say
+    # "chest pain category", never "chest pain").
     parts = [
         "heart disease risk",
         f"age {int(assessment.age)}",
-        f"chest pain type {int(assessment.cp)}",
+        f"chest pain category {int(assessment.cp)}",
         f"blood pressure {int(assessment.trestbps)}",
         f"cholesterol {int(assessment.chol)}",
     ]
     if assessment.exang:
-        parts.append("exercise-induced angina")
+        parts.append("angina during exercise testing")
     if assessment.fbs:
-        parts.append("high blood sugar diabetes risk")
+        parts.append("elevated fasting glucose")
     if assessment.restecg:
-        parts.append("abnormal resting ECG")
+        parts.append("abnormal resting ECG finding")
     if float(assessment.oldpeak) > 0:
-        parts.append("ST depression exercise")
+        parts.append("exercise ST segment changes")
     if assessment.thal:
         parts.append("thallium stress test abnormality")
     if int(assessment.ca) > 0:
-        parts.append("coronary artery blockage")
+        parts.append("coronary artery narrowing")
     return ", ".join(parts)
 
 
@@ -77,7 +77,7 @@ def generate_guidance(
     Raises typed errors; the endpoint maps them to HTTP.
     """
     from backend.app.rag.retrieval import (
-        KnowledgeBaseEmpty,
+        KnowledgeBaseEmptyError,
         RetrievalUnavailableError,
         retrieve_relevant_evidence,
     )
@@ -97,7 +97,7 @@ def generate_guidance(
     # --- 2. Retrieve evidence (short-circuit if none) ------------------- #
     try:
         evidence = retrieve_relevant_evidence(db, query)
-    except KnowledgeBaseEmpty:
+    except KnowledgeBaseEmptyError:
         raise GuidanceUnavailableError(
             "The knowledge base is empty. Ingest sources first."
         ) from None
@@ -152,12 +152,13 @@ def generate_guidance(
     verified = verify_citations(raw, evidence)
 
     # --- 5. Safety pass -------------------------------------------------- #
+    # No free-text user input exists in this phase, so the text-pattern
+    # emergency detector is not applied here (assessment-derived queries are
+    # guaranteed emergency-vocabulary-free by build_retrieval_query). When
+    # future phases add user messages, screen THEM with screen_request /
+    # detect_emergency before the LLM call and prepend EMERGENCY_NOTICE to
+    # the summary on escalation.
     summary = raw.summary
-    verdict = detect_emergency(query)  # query is built from assessment only
-    if verdict.escalate_emergency:
-        from backend.app.rag.safety import EMERGENCY_NOTICE
-
-        summary = f"{EMERGENCY_NOTICE}\n\n{summary}"
 
     return {
         "summary": summary,

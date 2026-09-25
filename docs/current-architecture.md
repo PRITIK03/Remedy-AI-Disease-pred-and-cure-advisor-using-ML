@@ -1,8 +1,34 @@
-# Current Architecture (after Phase 1 — as actually implemented)
+# Current Architecture (after Phase 4 — as actually implemented)
 
-This documents what exists **today**, after Phase 0 (audit + baseline) and
-Phase 1 (ML modernization). Planned-but-unbuilt items are listed explicitly
-at the end and must not be read as implemented.
+This documents what exists **today**, after Phases 0–4. Phase-specific deep
+dives: `docs/backend-architecture.md` (Phase 2),
+`docs/frontend-architecture.md` (Phase 3), `docs/rag-architecture.md`
+(Phase 4). Planned-but-unbuilt items are listed at the end and must not be
+read as implemented.
+
+## System overview (Phases 2–4)
+
+```text
+Next.js 16 frontend (app router, TypeScript strict)
+   ↓  typed API client (lib/api.ts; NEXT_PUBLIC_API_URL)
+FastAPI (backend/app/main.py)
+   ├── /health, /ready
+   └── /api/v1/assessments (+/{id}, /{id}/explanation, POST /{id}/guidance)
+         ↓                          ↓
+ModelService (v2 predictor)   Guidance flow (Phase 4):
+   loaded once at startup       assessment → retrieval query → pgvector
+   SHAP explain() hook          cosine search → evidence → LLM (structured)
+         ↓                      → Pydantic validation → citation check
+PostgreSQL (assessments, users, knowledge_documents, knowledge_chunks)
+Redis (health + 60s metadata cache only)
+   ↓
+ml.inference.predictor (models/v2/cardio_risk_pipeline.joblib — unchanged)
+```
+
+The legacy Flask app (app.py) remains runnable for regression comparison;
+the rule-based `get_remedies()` is superseded in the modern stack by the
+Phase 4 evidence-grounded guidance endpoint (rules are not wired into the
+modern API).
 
 ```text
 Browser (legacy single-page HTML form — unchanged by design)
@@ -81,11 +107,15 @@ deterministic; see docs/dependency-audit.md).
 
 ## Implemented vs planned
 
-**Implemented (verified by tests):** the two flows above, model-provider
-abstraction, corrected semantics, calibration, CV, SHAP explainability,
-MLflow tracking, dataset provenance, 80 passing tests.
+**Implemented (verified by tests):** the ML training/inference flows,
+model-provider abstraction, corrected semantics, calibration, CV, SHAP
+explainability, MLflow tracking, dataset provenance; FastAPI backend with
+assessments + explanation + guidance endpoints, PostgreSQL (Alembic
+migrations incl. pgvector tables), Redis caching; Next.js frontend with
+dashboard/assessment/results/history and the opt-in AI guidance panel with
+verified citations; RAG ingestion pipeline (manifest → fetch → chunk →
+embed → store, idempotent); safety layer + citation verification.
 
-**NOT implemented (later phases per docs/modernization-roadmap.md):** FastAPI
-backend, PostgreSQL/Redis, Next.js frontend, RAG/LLM advice engine, LangGraph
-agents, multimodal extraction, FHIR/MCP, Docker/CI/CD, OpenTelemetry, auth,
-rate limiting.
+**NOT implemented (later phases per docs/modernization-roadmap.md):**
+LangGraph agents, multimodal extraction, FHIR/MCP, Docker/CI/CD,
+OpenTelemetry, auth, rate limiting, reranker, Kubernetes.

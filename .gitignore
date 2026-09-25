@@ -1,7 +1,9 @@
-# Environment / secrets
+# Environment / secrets — NEVER commit real .env files.
 .env
-*.env
+.env.*
 !.env.example
+frontend/.env.*
+!frontend/.env.example
 
 # Python
 __pycache__/
@@ -12,31 +14,50 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-
-# Tooling / OS
-.idea/
-.vscode/
-.DS_Store
-Thumbs.db
-
-# Coverage / build
 .coverage
 htmlcov/
-dist/
-build/
 
-# ML artifacts (regenerable via `python -m ml.training.train`)
-*.pkl
-models/
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# MLflow + regenerable ML artifacts. The ROOT /models/ dir (v2 serving
+# artifacts) is intentionally TRACKED, so the rule is anchored to the root
+# and must not touch backend/app/db/models/ (ORM source code).
 mlruns/
 mlflow.db
 mlflow.db-*
-# ...but keep the legacy pickles (tracked explicitly, phase 0 rule)
+/models/*
+!/models/v2/
+!/models/v2/**
+
+# Legacy pickles (tracked explicitly — phase 0 rule)
 !scaler.pkl
 !logistic_regression_model.pkl
 !random_forest_model.pkl
 !voting_classifier_model.pkl
-# Node modules (if any front‑end packages)
-node_modules/
-# Generated site docs (if any)
-site/
+
+# Datasets: ml/data/heart.csv and dataset_meta.json are intentionally
+# TRACKED (provenance snapshot, phase 1 rule). Do not ignore ml/data.
+
+# OS / editor junk
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+
+# SQLite sidecars (never used in production paths)
+*.sqlite
+*.sqlite3
+
+# Distributions
+dist/
+build/

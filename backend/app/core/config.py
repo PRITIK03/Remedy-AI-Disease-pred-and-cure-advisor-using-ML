@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     models_dir: str = ""  # empty → ml.config default (models/v2)
 
     # --- Databases ---------------------------------------------------------- #
-    database_url: str = "postgresql+psycopg://postgres:${POSTGRES_PASSWORD}@localhost:5432/remedy_ai"
+    database_url: str = "postgresql+psycopg://postgres:1234@localhost:5432/remedy_ai"
     redis_url: str = "redis://localhost:6379/0"
 
     # --- CORS --------------------------------------------------------------- #

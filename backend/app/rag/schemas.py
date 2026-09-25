@@ -31,7 +31,13 @@ class Citation(BaseModel):
 
 
 class HealthGuidanceResponse(BaseModel):
-    """Validated LLM output. The LLM NEVER sees or produces the ML numbers."""
+    """Validated LLM output. The LLM NEVER sees or produces the ML numbers.
+
+    Strict: unknown/extra fields from the model are rejected, not ignored —
+    malformed output must fail loudly here, not leak to the client.
+    """
+
+    model_config = {"extra": "forbid"}
 
     summary: str = Field(min_length=1, max_length=1200)
     model_explanation: str = Field(min_length=1, max_length=2000)

@@ -120,6 +120,18 @@ def get_assessment_explanation(
         col: float(row.__dict__[col]) for col in assessment_service.FEATURE_COLUMNS
     }
     explanation = model_service.explain(features, top_k=8)
+    return ExplanationResponse(
+        assessment_id=str(row.id),
+        model_version=row.model_version,
+        method=explanation.get("method", "unavailable"),
+        contributions=[
+            FeatureContribution(feature=c["feature"], shap_value=c["shap_value"])
+            for c in explanation.get("contributions", [])
+        ],
+        note=explanation.get(
+            "note", "Model contributions; not causal explanations."
+        ),
+    )
 
 
 @router.post(
@@ -144,15 +156,3 @@ def get_assessment_guidance(
     db: DbSessionDep,
 ) -> GuidanceResponse:
     return GuidanceResponse(**run_guidance(db, assessment_id))
-    return ExplanationResponse(
-        assessment_id=str(row.id),
-        model_version=row.model_version,
-        method=explanation.get("method", "unavailable"),
-        contributions=[
-            FeatureContribution(feature=c["feature"], shap_value=c["shap_value"])
-            for c in explanation.get("contributions", [])
-        ],
-        note=explanation.get(
-            "note", "Model contributions; not causal explanations."
-        ),
-    )

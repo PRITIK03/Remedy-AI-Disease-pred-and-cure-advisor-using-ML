@@ -83,6 +83,44 @@ export interface ReadinessResponse {
   };
 }
 
+/** One verified source citation returned by the guidance endpoint. */
+export interface Citation {
+  title: string;
+  source: string;
+  url: string;
+  section: string;
+}
+
+/** The validated AI guidance block (see backend/app/schemas/guidance.py). */
+export interface GuidanceDetail {
+  summary: string;
+  model_explanation: string;
+  key_factors: string[];
+  guidance: string[];
+  when_to_seek_care: string[];
+  limitations: string;
+  citations: Citation[];
+  evidence_count: number;
+}
+
+/** Response for POST /api/v1/assessments/{id}/guidance.
+
+  `assessment` is the authoritative MODEL OUTPUT snapshot — the LLM cannot
+  produce or alter it. `guidance` is AI-GENERATED, evidence-grounded text.
+ */
+export interface GuidanceResponse {
+  assessment: {
+    assessment_id: string;
+    model_version: string;
+    selected_model: string;
+    predicted_disease: boolean;
+    disease_probability: number;
+  };
+  guidance: GuidanceDetail;
+  prompt_version: string;
+  generated_at: string;
+}
+
 export interface ApiError {
   error: {
     code: string;

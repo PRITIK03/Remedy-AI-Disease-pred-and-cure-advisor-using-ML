@@ -89,7 +89,21 @@ def test_database_url() -> str:
     os.environ["DATABASE_URL"] = TEST_DATABASE_URL
     alembic_cfg = Config(str(PROJECT_ROOT / "alembic.ini"))
     alembic_cfg.set_main_option("script_location", str(PROJECT_ROOT / "alembic"))
-    command.upgrade(alembic_cfg, "head")
+    try:
+        command.upgrade(alembic_cfg, "head")
+        pgvector_ok = True
+    except Exception as exc:
+        # pgvector is optional for most tests: if the migration chain fails
+        # on the vector extension (not installed server-side), fall back to
+        # the last core revision so the app tables still exist.
+        if "vector" not in str(exc):
+            raise
+        command.upgrade(alembic_cfg, "dfadb23ef33c")
+        pgvector_ok = False
+        print(
+            "WARNING: pgvector extension unavailable; RAG tables were NOT "
+            "created in the test DB. RAG DB tests will be skipped."
+        )
 
     # Sanity: tables exist.
     engine = create_db_engine(TEST_DATABASE_URL)
@@ -106,6 +120,7 @@ def test_database_url() -> str:
     engine.dispose()
     assert {"assessments", "users"} <= tables
 
+    os.environ["PGVECTOR_AVAILABLE"] = "1" if pgvector_ok else "0"
     return TEST_DATABASE_URL
 
 

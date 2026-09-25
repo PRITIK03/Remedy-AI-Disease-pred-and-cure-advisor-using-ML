@@ -51,7 +51,7 @@ class KnowledgeDocument(UUIDPrimaryKeyMixin, Base):
     embedding_model: Mapped[str] = mapped_column(String(128), nullable=False)
     embedding_dimension: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    chunks: Mapped[list["KnowledgeChunk"]] = relationship(
+    chunks: Mapped[list[KnowledgeChunk]] = relationship(
         back_populates="document",
         cascade="all, delete-orphan",
         order_by="KnowledgeChunk.chunk_index",

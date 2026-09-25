@@ -41,12 +41,12 @@ Hard rules:
 - Output ONLY a JSON object matching the requested schema — no markdown,
   no commentary outside the JSON.
 
-JSON schema:
+JSON schema (field names EXACTLY as written — the output is machine-validated and unknown fields are rejected):
 {
   "summary": string,               // what the model output means, generally
   "model_explanation": string,     // why the model may have estimated this
   "key_factors": string[],         // inputs that most influenced the estimate
-  "general_guidance": string[],    // evidence-based general lifestyle info
+  "guidance": string[],            // evidence-based general lifestyle info
   "when_to_seek_care": string[],   // situations where professional care is advised
   "limitations": string,           // honest limits of model + guidance
   "citations": [{"title": string, "source": string, "url": string,
@@ -86,7 +86,7 @@ TASK: Produce the JSON object described in the system prompt:
 - summary: what this model estimate means, in plain language.
 - model_explanation: which features plausibly drove the estimate toward its
   value (use the ASSESSMENT FEATURES; do not overclaim causality).
-- general_guidance: general, evidence-grounded health information drawn from
+- guidance: general, evidence-grounded health information drawn from
   the RETRIEVED EVIDENCE only.
 - when_to_seek_care: situations in which the person should contact a
   healthcare professional, based on the evidence excerpts.

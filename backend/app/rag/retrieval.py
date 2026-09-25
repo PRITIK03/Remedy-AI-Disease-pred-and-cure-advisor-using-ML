@@ -8,7 +8,7 @@ ranked Evidence lists; internally the ranking strategy is isolated in
 
 from __future__ import annotations
 
-from sqlalchemy import String, cast, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import get_settings
@@ -24,7 +24,7 @@ class RetrievalUnavailableError(RuntimeError):
     """Raised when the knowledge base cannot serve queries."""
 
 
-class KnowledgeBaseEmpty(RuntimeError):
+class KnowledgeBaseEmptyError(RuntimeError):
     """Raised when no documents are ingested at all."""
 
 

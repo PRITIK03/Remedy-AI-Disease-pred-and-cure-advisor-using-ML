@@ -10,6 +10,7 @@ import type {
   AssessmentListResponse,
   AssessmentResponse,
   ExplanationResponse,
+  GuidanceResponse,
   HealthResponse,
   ReadinessResponse,
 } from "@/types/api";
@@ -108,6 +109,16 @@ export const api = {
   getExplanation(id: string): Promise<ExplanationResponse> {
     return request<ExplanationResponse>(
       `/api/v1/assessments/${encodeURIComponent(id)}/explanation`
+    );
+  },
+
+  // Explicit user request only — never called automatically on render.
+  // Long timeout: retrieval + LLM generation can take a while.
+  getGuidance(id: string): Promise<GuidanceResponse> {
+    return request<GuidanceResponse>(
+      `/api/v1/assessments/${encodeURIComponent(id)}/guidance`,
+      { method: "POST" },
+      45000
     );
   },
 

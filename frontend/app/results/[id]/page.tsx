@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
+import { AiGuidance } from "@/components/results/ai-guidance";
 import { ContributionsList } from "@/components/results/contributions-list";
 import { ProbabilityGauge } from "@/components/results/probability-gauge";
 import { Badge } from "@/components/ui/badge";
@@ -227,6 +228,9 @@ export default function ResultsPage({
           </div>
         </CardContent>
       </Card>
+
+      {/* AI guidance — lazy, explicit user opt-in (no LLM call on render) */}
+      <AiGuidance assessmentId={assessment.id} modelProbability={assessment.disease_probability} />
 
       {/* Feature contributions */}
       <Collapsible open={explOpen} onOpenChange={setExplOpen} className="mt-4">

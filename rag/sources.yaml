@@ -11,7 +11,9 @@
 # committed to the repository. If a publisher's terms prohibit reuse,
 # remove the entry and re-ingest.
 #
-# Each entry records provenance for the RAG citation layer.
+# NOTE: entries were verified to fetch reliably (HTTP 200, server-rendered
+# HTML). cdc.gov and mayoclinic.org reject server-side fetching (403 bot
+# protection) and are therefore not in the initial manifest.
 
 sources:
   # --- Government health organizations -----------------------------------
@@ -21,22 +23,10 @@ sources:
     document_type: "clinical_guidance"
     license_note: "US Government work; public domain unless otherwise noted."
 
-  - title: "What Is Ischemic Heart Disease?"
-    url: "https://www.nhlbi.nih.gov/health/ischemic-heart-disease"
+  - title: "Heart Attack"
+    url: "https://www.nhlbi.nih.gov/health/heart-attack"
     publisher: "National Heart, Lung, and Blood Institute (NIH)"
     document_type: "clinical_guidance"
-    license_note: "US Government work; public domain unless otherwise noted."
-
-  - title: "Coronary Artery Disease (CAD)"
-    url: "https://www.cdc.gov/heart-disease/about/coronary-artery-disease.html"
-    publisher: "US Centers for Disease Control and Prevention"
-    document_type: "public_health_guidance"
-    license_note: "US Government work; public domain unless otherwise noted."
-
-  - title: "Prevent Heart Disease"
-    url: "https://www.cdc.gov/heart-disease/prevention/index.html"
-    publisher: "US Centers for Disease Control and Prevention"
-    document_type: "public_health_guidance"
     license_note: "US Government work; public domain unless otherwise noted."
 
   - title: "Coronary heart disease"
@@ -58,13 +48,7 @@ sources:
     license_note: "OGL — Open Government Licence v3.0 (attribution required)."
 
   # --- Recognized medical institutions ------------------------------------
-  - title: "Heart Disease — Symptoms and Causes"
-    url: "https://www.mayoclinic.org/diseases-conditions/heart-disease/symptoms-causes/syc-20353118"
-    publisher: "Mayo Clinic"
-    document_type: "patient_education"
-    license_note: "Mayo Foundation copyright; fetched with attribution, educational use."
-
-  - title: "Coronary Artery Disease: Prevention & Treatment"
+  - title: "Coronary Artery Disease (CAD): Symptoms & Treatment"
     url: "https://my.clevelandclinic.org/health/diseases/16898-coronary-artery-disease"
     publisher: "Cleveland Clinic"
     document_type: "patient_education"
