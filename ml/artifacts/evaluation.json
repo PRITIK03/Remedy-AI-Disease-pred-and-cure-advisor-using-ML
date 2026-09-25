@@ -1,0 +1,358 @@
+{
+  "model_version": "2.0.0",
+  "dataset_hash": "d235cad39b7bcc1d63c7b672146fb3b6108b861201d2e29e288ec7fe03e35082",
+  "features": [
+    "age",
+    "sex",
+    "cp",
+    "trestbps",
+    "chol",
+    "fbs",
+    "restecg",
+    "thalach",
+    "exang",
+    "oldpeak",
+    "slope",
+    "ca",
+    "thal"
+  ],
+  "seed": 42,
+  "cv_configuration": {
+    "folds": 5,
+    "shuffle": true,
+    "random_state": 42
+  },
+  "test_size": 0.2,
+  "training_timestamp": "2026-09-25T10:16:11.528562+00:00",
+  "python_version": "3.14.7",
+  "sklearn_version": "1.7.2",
+  "numpy_version": "2.5.3",
+  "pandas_version": "3.0.6",
+  "candidates": {
+    "logistic_regression": {
+      "description": "Linear baseline; interpretable coefficients.",
+      "cv_roc_auc_mean": 0.9059440559440558,
+      "cv_roc_auc_std": 0.03152847078162762,
+      "cv_brier_mean": 0.12068963898165627,
+      "cv_brier_std": 0.02429212472331594,
+      "cv_f1_mean": 0.812581991651759,
+      "cv_f1_std": 0.05573553808393555
+    },
+    "random_forest": {
+      "description": "Bagged trees; robust non-linear baseline.",
+      "cv_roc_auc_mean": 0.9186350686350687,
+      "cv_roc_auc_std": 0.030845441178908924,
+      "cv_brier_mean": 0.12047968237635838,
+      "cv_brier_std": 0.015806210722667285,
+      "cv_f1_mean": 0.8208180271231887,
+      "cv_f1_std": 0.031004926984668845
+    },
+    "hist_gradient_boosting": {
+      "description": "Boosted trees (sklearn-native, XGBoost-class).",
+      "cv_roc_auc_mean": 0.877026677026677,
+      "cv_roc_auc_std": 0.02810419555824055,
+      "cv_brier_mean": 0.15301200580432334,
+      "cv_brier_std": 0.02825863347330551,
+      "cv_f1_mean": 0.7909339239571798,
+      "cv_f1_std": 0.02966519614967587
+    }
+  },
+  "calibration": {
+    "logistic_regression": {
+      "uncalibrated_brier_train": 0.09089660646870597,
+      "calibrated_brier_train": 0.09762530136942753,
+      "method": "sigmoid",
+      "note": "train-set Brier; calibrated uses internal CV so comparison is indicative"
+    },
+    "random_forest": {
+      "uncalibrated_brier_train": 0.06502990726121545,
+      "calibrated_brier_train": 0.06329101064093251,
+      "method": "sigmoid",
+      "note": "train-set Brier; calibrated uses internal CV so comparison is indicative"
+    },
+    "hist_gradient_boosting": {
+      "uncalibrated_brier_train": 0.011825502947989716,
+      "calibrated_brier_train": 0.05710400946290999,
+      "method": "sigmoid",
+      "note": "train-set Brier; calibrated uses internal CV so comparison is indicative"
+    }
+  },
+  "selected": "logistic_regression",
+  "test_metrics": {
+    "uncalibrated": {
+      "accuracy": 0.8360655737704918,
+      "precision": 0.8461538461538461,
+      "recall_sensitivity": 0.7857142857142857,
+      "specificity": 0.8787878787878788,
+      "f1": 0.8148148148148148,
+      "roc_auc": 0.9393939393939394,
+      "pr_auc": 0.9358934672117278,
+      "brier_score": 0.10634895334221862,
+      "confusion_matrix": {
+        "tn": 29,
+        "fp": 4,
+        "fn": 6,
+        "tp": 22
+      },
+      "threshold": 0.5
+    },
+    "calibrated": {
+      "accuracy": 0.8524590163934426,
+      "precision": 0.88,
+      "recall_sensitivity": 0.7857142857142857,
+      "specificity": 0.9090909090909091,
+      "f1": 0.8301886792452831,
+      "roc_auc": 0.9372294372294372,
+      "pr_auc": 0.9355668927146006,
+      "brier_score": 0.11153495103788798,
+      "confusion_matrix": {
+        "tn": 30,
+        "fp": 3,
+        "fn": 6,
+        "tp": 22
+      },
+      "threshold": 0.5
+    }
+  },
+  "subgroups": {
+    "sex_female_0": {
+      "n": 16,
+      "sensitivity": 0.75,
+      "specificity": 1.0,
+      "roc_auc": 1.0,
+      "roc_auc_note": "descriptive; wide confidence interval at this n",
+      "brier_score": 0.0653921759036165
+    },
+    "sex_male_1": {
+      "n": 45,
+      "sensitivity": 0.7916666666666666,
+      "specificity": 0.8571428571428571,
+      "roc_auc": 0.9186507936507937,
+      "roc_auc_note": "descriptive; wide confidence interval at this n",
+      "brier_score": 0.12794127108562897
+    },
+    "age_under_50": {
+      "n": 18,
+      "sensitivity": 0.8,
+      "specificity": 1.0,
+      "roc_auc": 0.9692307692307692,
+      "roc_auc_note": "descriptive; wide confidence interval at this n",
+      "brier_score": 0.07445292003078051
+    },
+    "age_50_to_59": {
+      "n": 28,
+      "sensitivity": 0.7333333333333333,
+      "specificity": 0.9230769230769231,
+      "roc_auc": 0.9384615384615385,
+      "roc_auc_note": "descriptive; wide confidence interval at this n",
+      "brier_score": 0.11510921309295563
+    },
+    "age_60_plus": {
+      "n": 15,
+      "sensitivity": 0.875,
+      "specificity": 0.7142857142857143,
+      "roc_auc": 0.8571428571428572,
+      "roc_auc_note": "descriptive; wide confidence interval at this n",
+      "brier_score": 0.14936143241029062
+    }
+  },
+  "explainability": {
+    "global": {
+      "method": "shap.LinearExplainer",
+      "importance": [
+        {
+          "feature": "categorical__ca_0",
+          "mean_abs_shap": 0.5762188405946231
+        },
+        {
+          "feature": "categorical__cp_0",
+          "mean_abs_shap": 0.5240846888481648
+        },
+        {
+          "feature": "binary__sex",
+          "mean_abs_shap": 0.454456822694743
+        },
+        {
+          "feature": "categorical__thal_2",
+          "mean_abs_shap": 0.42994897534855286
+        },
+        {
+          "feature": "numeric__oldpeak",
+          "mean_abs_shap": 0.3853821719633064
+        },
+        {
+          "feature": "categorical__thal_3",
+          "mean_abs_shap": 0.3495891034152013
+        },
+        {
+          "feature": "categorical__slope_1",
+          "mean_abs_shap": 0.2891165946303549
+        },
+        {
+          "feature": "binary__exang",
+          "mean_abs_shap": 0.25284146050140116
+        },
+        {
+          "feature": "categorical__cp_2",
+          "mean_abs_shap": 0.24885623393478867
+        },
+        {
+          "feature": "categorical__slope_2",
+          "mean_abs_shap": 0.23701064993508136
+        },
+        {
+          "feature": "numeric__thalach",
+          "mean_abs_shap": 0.22291488081221947
+        },
+        {
+          "feature": "categorical__ca_1",
+          "mean_abs_shap": 0.1788097791223654
+        },
+        {
+          "feature": "numeric__trestbps",
+          "mean_abs_shap": 0.17847794375463993
+        },
+        {
+          "feature": "categorical__ca_2",
+          "mean_abs_shap": 0.16483352319583405
+        },
+        {
+          "feature": "categorical__restecg_1",
+          "mean_abs_shap": 0.13076753441266137
+        },
+        {
+          "feature": "numeric__chol",
+          "mean_abs_shap": 0.12366244909565383
+        },
+        {
+          "feature": "categorical__restecg_0",
+          "mean_abs_shap": 0.07745157719872743
+        },
+        {
+          "feature": "categorical__ca_3",
+          "mean_abs_shap": 0.0709513597361642
+        },
+        {
+          "feature": "categorical__cp_3",
+          "mean_abs_shap": 0.06636596127870593
+        },
+        {
+          "feature": "categorical__cp_1",
+          "mean_abs_shap": 0.047566967155993595
+        },
+        {
+          "feature": "numeric__age",
+          "mean_abs_shap": 0.04516153110243679
+        },
+        {
+          "feature": "categorical__ca_4",
+          "mean_abs_shap": 0.01895199875107581
+        },
+        {
+          "feature": "categorical__thal_1",
+          "mean_abs_shap": 0.016081033291430374
+        },
+        {
+          "feature": "categorical__slope_0",
+          "mean_abs_shap": 0.012725932228452811
+        },
+        {
+          "feature": "binary__fbs",
+          "mean_abs_shap": 0.011420938116322473
+        },
+        {
+          "feature": "categorical__thal_0",
+          "mean_abs_shap": 0.004415795002438645
+        },
+        {
+          "feature": "categorical__restecg_2",
+          "mean_abs_shap": 0.003800843271871187
+        }
+      ]
+    },
+    "local": {
+      "method": "shap.LinearExplainer",
+      "rows": {
+        "48": {
+          "top_contributions": [
+            {
+              "feature": "numeric__oldpeak",
+              "value": 0.8333056881654913
+            },
+            {
+              "feature": "categorical__ca_0",
+              "value": 0.7409612495656809
+            },
+            {
+              "feature": "categorical__ca_2",
+              "value": 0.6804030393572391
+            },
+            {
+              "feature": "categorical__cp_0",
+              "value": 0.5712557793070333
+            },
+            {
+              "feature": "categorical__thal_2",
+              "value": 0.47843410026348093
+            },
+            {
+              "feature": "categorical__thal_3",
+              "value": 0.4370167360859013
+            },
+            {
+              "feature": "binary__exang",
+              "value": 0.4148680293353685
+            },
+            {
+              "feature": "binary__sex",
+              "value": 0.3898708049616632
+            }
+          ],
+          "note": "model contributions (SHAP); not causal explanations",
+          "description": "test row with highest model-estimated disease probability"
+        },
+        "30": {
+          "top_contributions": [
+            {
+              "feature": "binary__sex",
+              "value": -0.6361049975690294
+            },
+            {
+              "feature": "categorical__cp_0",
+              "value": -0.4866252934837691
+            },
+            {
+              "feature": "categorical__ca_0",
+              "value": -0.4167907028806955
+            },
+            {
+              "feature": "categorical__thal_2",
+              "value": -0.391446082033757
+            },
+            {
+              "feature": "categorical__cp_2",
+              "value": -0.38952617650856286
+            },
+            {
+              "feature": "numeric__oldpeak",
+              "value": -0.38438406560775473
+            },
+            {
+              "feature": "categorical__thal_3",
+              "value": -0.3036895962630839
+            },
+            {
+              "feature": "categorical__slope_1",
+              "value": -0.2691642881661498
+            }
+          ],
+          "note": "model contributions (SHAP); not causal explanations",
+          "description": "test row with lowest model-estimated disease probability"
+        }
+      }
+    },
+    "wording": "model contributions; not causal or clinical explanations"
+  },
+  "metadata_path": "metadata.json",
+  "metrics_path": "metrics.json"
+}

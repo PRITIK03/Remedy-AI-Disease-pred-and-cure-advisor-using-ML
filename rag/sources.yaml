@@ -1,0 +1,71 @@
+# Remedy-AI knowledge base — trusted source manifest (Phase 4)
+#
+# ONLY reputable medical/health publishers are accepted. The loader
+# (backend/app/rag/sources.py) fails closed: any URL outside the allowlist
+# aborts ingestion. Do NOT add blogs, SEO content sites, forums, wikis, or
+# unverified articles.
+#
+# License/usage: these are public-facing government/institutional health
+# pages, fetched at ingestion time and stored with provenance metadata
+# (title, publisher, URL, retrieved_at, content hash). Content is NOT
+# committed to the repository. If a publisher's terms prohibit reuse,
+# remove the entry and re-ingest.
+#
+# Each entry records provenance for the RAG citation layer.
+
+sources:
+  # --- Government health organizations -----------------------------------
+  - title: "Coronary Heart Disease"
+    url: "https://www.nhlbi.nih.gov/health/coronary-heart-disease"
+    publisher: "National Heart, Lung, and Blood Institute (NIH)"
+    document_type: "clinical_guidance"
+    license_note: "US Government work; public domain unless otherwise noted."
+
+  - title: "What Is Ischemic Heart Disease?"
+    url: "https://www.nhlbi.nih.gov/health/ischemic-heart-disease"
+    publisher: "National Heart, Lung, and Blood Institute (NIH)"
+    document_type: "clinical_guidance"
+    license_note: "US Government work; public domain unless otherwise noted."
+
+  - title: "Coronary Artery Disease (CAD)"
+    url: "https://www.cdc.gov/heart-disease/about/coronary-artery-disease.html"
+    publisher: "US Centers for Disease Control and Prevention"
+    document_type: "public_health_guidance"
+    license_note: "US Government work; public domain unless otherwise noted."
+
+  - title: "Prevent Heart Disease"
+    url: "https://www.cdc.gov/heart-disease/prevention/index.html"
+    publisher: "US Centers for Disease Control and Prevention"
+    document_type: "public_health_guidance"
+    license_note: "US Government work; public domain unless otherwise noted."
+
+  - title: "Coronary heart disease"
+    url: "https://medlineplus.gov/ency/article/007115.htm"
+    publisher: "MedlinePlus (US National Library of Medicine)"
+    document_type: "patient_education"
+    license_note: "US Government work; public domain unless otherwise noted."
+
+  - title: "Cardiovascular diseases (CVDs) — Fact sheet"
+    url: "https://www.who.int/news-room/fact-sheets/detail/cardiovascular-diseases-(cvds)"
+    publisher: "World Health Organization"
+    document_type: "public_health_guidance"
+    license_note: "WHO copyright; referenced with attribution for educational use."
+
+  - title: "Atherosclerosis"
+    url: "https://www.nhs.uk/conditions/atherosclerosis/"
+    publisher: "UK National Health Service"
+    document_type: "patient_education"
+    license_note: "OGL — Open Government Licence v3.0 (attribution required)."
+
+  # --- Recognized medical institutions ------------------------------------
+  - title: "Heart Disease — Symptoms and Causes"
+    url: "https://www.mayoclinic.org/diseases-conditions/heart-disease/symptoms-causes/syc-20353118"
+    publisher: "Mayo Clinic"
+    document_type: "patient_education"
+    license_note: "Mayo Foundation copyright; fetched with attribution, educational use."
+
+  - title: "Coronary Artery Disease: Prevention & Treatment"
+    url: "https://my.clevelandclinic.org/health/diseases/16898-coronary-artery-disease"
+    publisher: "Cleveland Clinic"
+    document_type: "patient_education"
+    license_note: "Cleveland Clinic copyright; fetched with attribution, educational use."

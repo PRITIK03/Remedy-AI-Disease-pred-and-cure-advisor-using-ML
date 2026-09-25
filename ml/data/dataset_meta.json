@@ -1,0 +1,31 @@
+{
+  "dataset_name": "heart.csv (Heart Attack Analysis & Prediction / UCI Cleveland derived)",
+  "source_url": "https://raw.githubusercontent.com/kb22/Heart-Disease-Prediction/master/dataset.csv",
+  "source_repository": "kb22/Heart-Disease-Prediction (GitHub mirror)",
+  "original_kaggle_reference": "ronitf/heart-disease-uci (legacy training source, identified in Phase 0)",
+  "downloaded_at": "2026-09-25T09:47:39.504816+00:00",
+  "rows": 303,
+  "columns": [
+    "age",
+    "sex",
+    "cp",
+    "trestbps",
+    "chol",
+    "fbs",
+    "restecg",
+    "thalach",
+    "exang",
+    "oldpeak",
+    "slope",
+    "ca",
+    "thal",
+    "target"
+  ],
+  "target_column": "target",
+  "target_counts": {
+    "0": 138,
+    "1": 165
+  },
+  "sha256": "d235cad39b7bcc1d63c7b672146fb3b6108b861201d2e29e288ec7fe03e35082",
+  "verification": "All 13 feature means/stds match legacy scaler.pkl statistics to 4 decimal places; LR coefficient-sign reproduction test passed (see docs/legacy-ml-baseline.md and ml/data/README.md)."
+}
