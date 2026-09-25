@@ -216,6 +216,16 @@ def make_generate_guidance_node(db, llm_client=None):
         evidence = state.get("evidence") or []
         features = state.get("assessment") or {}
 
+        # Configuration errors fail fast — never retried (phase rule).
+        settings = get_settings()
+        if not settings.llm_configured:
+            return {
+                "llm_error": "LLM provider not configured",
+                "errors": ["llm_not_configured"],
+                "workflow_status": "failed",
+                "metadata": {"llm_unconfigured": True},
+            }
+
         client = llm_client or get_llm_client()
         user_prompt = build_user_prompt(
             features,

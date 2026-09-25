@@ -147,6 +147,7 @@ def get_assessment_explanation(
     ),
     responses={
         404: {"description": "Assessment not found"},
+        202: {"description": "Flagged for human review; guidance not released"},
         502: {"description": "Guidance generation failed (provider error)"},
         503: {"description": "Guidance not configured / knowledge base empty"},
     },
