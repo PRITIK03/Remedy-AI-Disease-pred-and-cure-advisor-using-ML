@@ -167,7 +167,7 @@ blip drains traffic without triggering a restart loop.
 
 ---
 
-## 6. Database and pgvector
+## 6. Database, pgvector, and frontend images
 
 The Compose stack uses `pgvector/pgvector:pg18` and runs
 `scripts/docker/postgres-init.sql` on first boot to `CREATE EXTENSION vector`.

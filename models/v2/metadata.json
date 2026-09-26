@@ -59,7 +59,7 @@
   "background_sample": "background_sample.joblib (80 raw TRAIN rows for SHAP background)",
   "mlflow": {
     "enabled": true,
-    "tracking_uri": "sqlite:///D:/GEN Ai Projects/Remedi AI new/Remedy-AI-Disease-pred-and-cure-advisor-using-ML/mlflow.db",
+    "tracking_uri": "sqlite:///<PROJECT_ROOT>/mlflow.db",
     "experiment_name": "cardio-risk",
     "experiment_id": "1",
     "run_id": "3bfdb416aa4440948b6d7c2382faa9a0"
