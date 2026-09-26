@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api, ApiError } from "@/lib/api";
-import type { AssessmentCreate, AssessmentResponse } from "@/types/api";
+import type {
+  AssessmentCreate,
+  AssessmentResponse,
+  MedicalReportResponse,
+} from "@/types/api";
 
 const VALID_INPUT: AssessmentCreate = {
   age: 45, sex: 1, cp: 0, trestbps: 120, chol: 180, fbs: 0,
@@ -18,6 +22,30 @@ const VALID_RESPONSE: AssessmentResponse = {
   probability_label: "model_estimated_probability",
   created_at: "2026-09-25T10:00:00Z",
   input_features: VALID_INPUT,
+  source: "manual",
+  report_id: null,
+};
+
+const VALID_REPORT: MedicalReportResponse = {
+  id: "223e4567-e89b-12d3-a456-426614174000",
+  filename: "scan.png",
+  mime_type: "image/png",
+  file_size_bytes: 1234,
+  file_hash: "abc123",
+  status: "completed",
+  error_message: null,
+  created_at: "2026-09-26T10:00:00Z",
+  latest_extraction: {
+    id: "323e4567-e89b-12d3-a456-426614174000",
+    report_id: "223e4567-e89b-12d3-a456-426614174000",
+    extraction_model: "stub",
+    prompt_version: "v1",
+    extracted_features: { age: 45, chol: 180 },
+    confidences: { age: 0.9, chol: 0.8 },
+    evidence: { age: "Age 45", chol: "Chol 180" },
+    notes: null,
+    created_at: "2026-09-26T10:00:00Z",
+  },
 };
 
 describe("API client", () => {
@@ -118,5 +146,32 @@ describe("API client", () => {
     expect(err.status).toBe(404);
     expect(err.code).toBe("not_found");
     expect(err.requestId).toBe("req-1");
+  });
+
+  it("listReports builds pagination query", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ items: [VALID_REPORT], total: 1 }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        )
+      )
+    );
+    const res = await api.listReports(10, 5);
+    const [url] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("limit=10");
+    expect(String(url)).toContain("offset=5");
+    expect(res.total).toBe(1);
+  });
+
+  it("confirmReport posts confirmed values to the report endpoint", async () => {
+    await api.confirmReport("report-1", VALID_INPUT);
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("/api/v1/reports/report-1/confirm");
+    expect((init as RequestInit).method).toBe("POST");
+    expect(JSON.parse(String((init as RequestInit).body))).toMatchObject({ age: 45 });
   });
 });

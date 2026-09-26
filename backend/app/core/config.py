@@ -42,6 +42,40 @@ class Settings(BaseSettings):
     # application refuses wildcard origins when app_env=production.
     cors_origins: str = "http://localhost:3000"
 
+    # --- Authentication / sessions (Phase 6) --------------------------------- #
+    # Argon2 password hashing (pwdlib). Parameters are the library defaults —
+    # deliberately not tuned in source; raise OWASP work factors via env.
+    # Session cookies: HttpOnly always; Secure only over HTTPS (production).
+    # "__Host-" prefix requires Secure + Path=/ + no Domain, so it is enabled
+    # only when the deployment is HTTPS with dedicated domains.
+    session_ttl_seconds: int = 60 * 60 * 8  # 8h default, configurable
+    session_cookie_name: str = "remedy_session"
+    cookie_secure: bool = False  # env-driven; MUST be true in production
+    cookie_domain: str = ""  # empty → host-only cookie
+    use_host_prefixed_cookie: bool = False
+    csrf_cookie_name: str = "remedy_csrf"
+    csrf_header_name: str = "X-CSRF-Token"
+
+    # --- Auth rate limiting (Redis fixed-window; conservative defaults) ------ #
+    auth_rate_limit_register_per_hour: int = 10
+    auth_rate_limit_login_per_hour: int = 20
+
+    # --- Security headers (Phase 6) ------------------------------------------ #
+    # HMAC signing secret for CSRF tokens. Empty in dev (a deterministic
+    # fallback is derived from the DB URL); REQUIRED in production — the app
+    # refuses to start with the fallback there. Never a real secret in source.
+    secret_key: str = ""
+    # HSTS is sent ONLY in production (the app must never instruct browsers
+    # to force HTTPS on a local plain-HTTP dev server).
+    hsts_max_age_seconds: int = 31536000
+
+    @field_validator("session_ttl_seconds")
+    @classmethod
+    def _validate_session_ttl(cls, v: int) -> int:
+        if not (60 <= v <= 60 * 60 * 24 * 7):
+            raise ValueError("SESSION_TTL_SECONDS must be between 60 and 7 days")
+        return v
+
     # --- RAG / knowledge base (Phase 4) -------------------------------------- #
     # Embedding provider: any OpenAI-compatible endpoint (OpenRouter, OpenAI,
     # Ollama, ...). Model + dimension are configuration: changing either
@@ -64,6 +98,14 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 60.0
     llm_prompt_version: str = "v1"
 
+    # --- Medical Report Ingestion (Phase 7) ---------------------------------- #
+    storage_backend: str = "local"
+    reports_storage_dir: str = "data/reports"
+    reports_max_bytes: int = 10 * 1024 * 1024  # 10 MB default
+    multimodal_model: str = ""  # if empty, falls back to llm_model
+    reports_max_pdf_pages: int = 10
+
+
     @field_validator("cors_origins")
     @classmethod
     def _split_origins(cls, v: str) -> list[str]:
@@ -83,6 +125,21 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def csrf_secret_configured(self) -> bool:
+        return bool(self.secret_key) or not self.is_production
+
+    @property
+    def session_cookie_name_resolved(self) -> str:
+        """__Host- prefix (Secure, Path=/, no Domain) when topology allows."""
+        if self.use_host_prefixed_cookie:
+            if not (self.cookie_secure and not self.cookie_domain):
+                raise ValueError(
+                    "__Host- cookie requires COOKIE_SECURE=true and no COOKIE_DOMAIN"
+                )
+            return f"__Host-{self.session_cookie_name}"
+        return self.session_cookie_name
 
     @property
     def rag_configured(self) -> bool:

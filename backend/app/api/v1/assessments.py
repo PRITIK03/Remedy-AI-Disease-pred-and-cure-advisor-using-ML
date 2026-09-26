@@ -1,14 +1,20 @@
-"""Assessment API endpoints (/api/v1/assessments)."""
+"""Assessment API endpoints (/api/v1/assessments) — Phase 6.
+
+Every endpoint requires an authenticated user. All reads are scoped to the
+owner; a foreign or missing id yields the SAME 404 (no existence oracle).
+"""
 
 from __future__ import annotations
 
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
+from backend.app.db.models import User
 from backend.app.dependencies import DbSessionDep, ModelServiceDep
+from backend.app.dependencies_auth import CurrentUserDep, enforce_csrf
 from backend.app.schemas.assessment import (
     AssessmentCreate,
     AssessmentListResponse,
@@ -18,7 +24,11 @@ from backend.app.schemas.guidance import GuidanceResponse
 from backend.app.services import assessment_service
 from backend.app.services.guidance_service import run_guidance
 
-router = APIRouter(prefix="/assessments", tags=["assessments"])
+router = APIRouter(
+    prefix="/assessments",
+    tags=["assessments"],
+    dependencies=[Depends(enforce_csrf)],
+)
 
 
 class FeatureContribution(BaseModel):
@@ -39,37 +49,56 @@ class ExplanationResponse(BaseModel):
     note: str = Field(description="Interpretation guidance for this output.")
 
 
+def _get_owned_or_404(db, user: User, assessment_id: UUID):
+    """Single choke point for ownership-scoped fetches."""
+    row = assessment_service.get_assessment_for_user(db, assessment_id, user.id)
+    if row is None:
+        # Same 404 for missing AND foreign — no oracle for guessing ids.
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assessment not found",
+        )
+    return row
+
+
 @router.post(
     "",
     response_model=AssessmentResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a cardiovascular risk assessment",
     description=(
-        "Runs the ML model (v2) on the 13 input features and persists the "
-        "result. The output is a model-estimated probability of the disease "
-        "class from an educational prototype — **not a medical diagnosis**."
+        "Runs the ML model (v2) on the 13 input features, persists the "
+        "result owned by the authenticated user. The output is a "
+        "model-estimated probability from an educational prototype — **not "
+        "a medical diagnosis**."
     ),
 )
 def create_assessment(
     payload: AssessmentCreate,
     model_service: ModelServiceDep,
     db: DbSessionDep,
+    user: CurrentUserDep,
 ) -> AssessmentResponse:
-    row = assessment_service.create_assessment(db, model_service, payload)
+    row = assessment_service.create_assessment(db, model_service, payload, user.id)
+    # NOTE: no logging of `payload` here (or anywhere) — the 13 inputs are
+    # health data. Only the row id and model version are logged downstream.
     return AssessmentResponse(**assessment_service.to_response(row))
 
 
 @router.get(
     "",
     response_model=AssessmentListResponse,
-    summary="List assessments (paginated, newest first)",
+    summary="List YOUR assessments (paginated, newest first)",
 )
 def list_assessments(
     db: DbSessionDep,
+    user: CurrentUserDep,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> AssessmentListResponse:
-    items, total = assessment_service.list_assessments(db, limit=limit, offset=offset)
+    items, total = assessment_service.list_assessments(
+        db, user_id=user.id, limit=limit, offset=offset
+    )
     return AssessmentListResponse(
         items=[AssessmentResponse(**assessment_service.to_response(a)) for a in items],
         total=total,
@@ -81,23 +110,20 @@ def list_assessments(
 @router.get(
     "/{assessment_id}",
     response_model=AssessmentResponse,
-    summary="Retrieve one assessment by id",
+    summary="Retrieve one of YOUR assessments by id",
     responses={404: {"description": "Assessment not found"}},
 )
-def get_assessment(assessment_id: UUID, db: DbSessionDep) -> AssessmentResponse:
-    row = assessment_service.get_assessment(db, assessment_id)
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Assessment not found",
-        )
+def get_assessment(
+    assessment_id: UUID, db: DbSessionDep, user: CurrentUserDep
+) -> AssessmentResponse:
+    row = _get_owned_or_404(db, user, assessment_id)
     return AssessmentResponse(**assessment_service.to_response(row))
 
 
 @router.get(
     "/{assessment_id}/explanation",
     response_model=ExplanationResponse,
-    summary="Model feature contributions for one assessment",
+    summary="Model feature contributions for one of YOUR assessments",
     description=(
         "Returns per-feature model contributions (SHAP) for a stored "
         "assessment. These are model contributions — **not** causal or "
@@ -109,13 +135,9 @@ def get_assessment_explanation(
     assessment_id: UUID,
     model_service: ModelServiceDep,
     db: DbSessionDep,
+    user: CurrentUserDep,
 ) -> ExplanationResponse:
-    row = assessment_service.get_assessment(db, assessment_id)
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Assessment not found",
-        )
+    row = _get_owned_or_404(db, user, assessment_id)
     features: dict[str, Any] = {
         col: float(row.__dict__[col]) for col in assessment_service.FEATURE_COLUMNS
     }
@@ -137,7 +159,7 @@ def get_assessment_explanation(
 @router.post(
     "/{assessment_id}/guidance",
     response_model=GuidanceResponse,
-    summary="AI-generated, evidence-grounded guidance for one assessment",
+    summary="AI-generated, evidence-grounded guidance for one of YOUR assessments",
     description=(
         "Retrieves trusted medical evidence (pgvector similarity search) and "
         "generates structured AI guidance with verified citations. **This is "
@@ -155,5 +177,7 @@ def get_assessment_explanation(
 def get_assessment_guidance(
     assessment_id: UUID,
     db: DbSessionDep,
+    user: CurrentUserDep,
 ) -> GuidanceResponse:
-    return GuidanceResponse(**run_guidance(db, assessment_id))
+    _get_owned_or_404(db, user, assessment_id)  # ownership before workflow
+    return GuidanceResponse(**run_guidance(db, assessment_id, user_id=user.id))

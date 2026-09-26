@@ -77,6 +77,9 @@ class AssessmentResponse(BaseModel):
     input_features: AssessmentCreate = Field(
         description="The exact features used for this prediction."
     )
+    source: str = Field(default="manual", description="'manual' or 'report'")
+    report_id: str | None = Field(default=None, description="UUID of source report if ingested")
+
 
 
 class AssessmentListResponse(BaseModel):

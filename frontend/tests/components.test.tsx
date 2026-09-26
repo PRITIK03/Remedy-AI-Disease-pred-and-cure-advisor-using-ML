@@ -19,6 +19,8 @@ const MOCK_ASSESSMENT: AssessmentResponse = {
     restecg: 0, thalach: 170, exang: 0, oldpeak: 0.5, slope: 1,
     ca: 0, thal: 2,
   },
+  source: "manual",
+  report_id: null,
 };
 
 describe("ProbabilityGauge", () => {

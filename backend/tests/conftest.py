@@ -11,9 +11,11 @@ from __future__ import annotations
 import os
 import socket
 import sys
+import uuid
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -85,6 +87,64 @@ requires_redis = pytest.mark.skipif(
 )
 
 
+def _make_fake_redis_service():
+    """RedisService backed by fakeredis (in-memory) for auth/session tests.
+
+    Tests must exercise the REAL session semantics (TTLs, deletes, double
+    submits) without requiring a live Redis server. Returns None only when
+    fakeredis is unavailable, in which case auth tests would fail closed.
+    """
+    try:
+        import fakeredis
+    except ImportError:
+        return None
+    from backend.app.services.redis_service import RedisService
+
+    service = RedisService("fakeredis://test")
+    service._redis = fakeredis.FakeAsyncRedis(decode_responses=True)
+    return service
+
+
+# --------------------------------------------------------------------------- #
+# Auth helpers (Phase 6)
+# --------------------------------------------------------------------------- #
+
+CSRF_COOKIE = "remedy_csrf"
+SESSION_COOKIE = "remedy_session"
+
+
+def csrf_headers(client) -> dict:
+    """Headers carrying the current CSRF cookie value for unsafe requests."""
+    token = client.cookies.get(CSRF_COOKIE)
+    return {"X-CSRF-Token": token} if token else {}
+
+
+def bootstrap_csrf(client) -> str:
+    """Mint a CSRF cookie pre-auth (the same flow the frontend uses)."""
+    resp = client.get("/api/v1/auth/csrf")
+    assert resp.status_code == 200
+    return client.cookies.get(CSRF_COOKIE)
+
+
+def register_and_login(client, email: str, password: str, display_name="Test User"):
+    """Register then login; returns the login response."""
+    token = bootstrap_csrf(client)
+    resp = client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password, "display_name": display_name},
+        headers={"X-CSRF-Token": token},
+    )
+    assert resp.status_code in (201, 409), resp.text
+    token = bootstrap_csrf(client)
+    resp = client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": password},
+        headers={"X-CSRF-Token": token},
+    )
+    assert resp.status_code == 200, resp.text
+    return resp
+
+
 @pytest.fixture(scope="session")
 def test_database_url() -> str:
     if not PG_AVAILABLE:
@@ -120,10 +180,10 @@ def test_database_url() -> str:
     except Exception as exc:
         # pgvector is optional for most tests: if the migration chain fails
         # on the vector extension (not installed server-side), fall back to
-        # the last core revision so the app tables still exist.
+        # the Phase 7 revision so core + report tables exist without RAG.
         if "vector" not in str(exc):
             raise
-        command.upgrade(alembic_cfg, "dfadb23ef33c")
+        command.upgrade(alembic_cfg, "b7d19c34e8f2")
         pgvector_ok = False
         print(
             "WARNING: pgvector extension unavailable; RAG tables were NOT "
@@ -182,13 +242,7 @@ class TestClientContext:
 
             self.app.state.model_service = ModelService()
             self.app.state.model_service.load(None)
-            self.app.state.redis_service = RedisService(
-                os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-            )
-            try:
-                await self.app.state.redis_service.connect()
-            except Exception:  # noqa: BLE001
-                self.app.state.redis_service = None
+            self.app.state.redis_service = _make_fake_redis_service()
             self.app.state.db_engine = create_db_engine(TEST_DATABASE_URL)
             self.app.state.session_factory = create_session_factory(
                 self.app.state.db_engine
@@ -212,17 +266,66 @@ class TestClientContext:
         return False
 
 
+class CSRFClient(TestClient):
+    """TestClient that auto-echoes the CSRF cookie into the required header
+    for unsafe requests (mirrors what the real frontend does). An explicitly
+    provided X-CSRF-Token is never overridden, so negative tests still work."""
+
+    def request(self, method, url, **kwargs):  # noqa: D102
+        headers = dict(kwargs.get("headers") or {})
+        if "X-CSRF-Token" not in headers:
+            token = self.cookies.get(CSRF_COOKIE)
+            if token:
+                headers["X-CSRF-Token"] = token
+        kwargs["headers"] = headers
+        return super().request(method, url, **kwargs)
+
+
 @pytest.fixture()
 def client(app):
     from fastapi.testclient import TestClient
 
     with TestClient(app) as test_client:
+        # The lifespan overwrites services with real-config instances; swap
+        # back the in-memory fake Redis so session/rate-limit behavior is
+        # deterministic and no live Redis is required.
+        fake = _make_fake_redis_service()
+        if fake is not None:
+            test_client.app.state.redis_service = fake
+        yield test_client
+
+
+@pytest.fixture()
+def auth_client(app):
+    """CSRF-auto-echoing client logged in as a unique fresh user.
+
+    Used by pre-auth suites (test_api.py, test_guidance_api.py) so their
+    business assertions stay unchanged; ownership/CSRF behavior is covered
+    by the Phase 6 suite with the raw `client` fixture.
+    """
+    with CSRFClient(app) as test_client:
+        # Swap in the fake Redis AFTER the lifespan has run (the lifespan
+        # overwrites app.state with real-config services).
+        fake = _make_fake_redis_service()
+        if fake is not None:
+            test_client.app.state.redis_service = fake
+        email = f"legacy-{uuid.uuid4().hex[:12]}@example.com"
+        bootstrap_csrf(test_client)
+        resp = test_client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": email,
+                "password": "legacy-suite-password",
+                "display_name": "Legacy Suite User",
+            },
+        )
+        assert resp.status_code == 201, resp.text
         yield test_client
 
 
 @pytest.fixture(autouse=True)
 def clean_assessments_table(test_database_url):
-    """Isolate each test: truncate assessments between tests."""
+    """Isolate each test: truncate users + assessments + reports between tests."""
     if not PG_AVAILABLE:
         yield
         return
@@ -233,5 +336,9 @@ def clean_assessments_table(test_database_url):
     from sqlalchemy import text
 
     with engine.begin() as conn:
-        conn.execute(text("TRUNCATE TABLE assessments"))
+        conn.execute(
+            text(
+                "TRUNCATE TABLE report_extractions, assessments, medical_reports, users CASCADE"
+            )
+        )
     engine.dispose()

@@ -114,8 +114,14 @@ assessments + explanation + guidance endpoints, PostgreSQL (Alembic
 migrations incl. pgvector tables), Redis caching; Next.js frontend with
 dashboard/assessment/results/history and the opt-in AI guidance panel with
 verified citations; RAG ingestion pipeline (manifest → fetch → chunk →
-embed → store, idempotent); safety layer + citation verification.
+embed → store, idempotent); safety layer + citation verification; session
+authentication with ownership scoping (docs/auth-security.md); multimodal
+medical-report ingestion with human confirmation before prediction
+(docs/report-ingestion.md); read-only FHIR R4 interoperability
+(`Patient`/`Observation`/`DiagnosticReport`, ownership-scoped) and a
+read-only MCP server over stdio (docs/fhir-mcp.md).
 
 **NOT implemented (later phases per docs/modernization-roadmap.md):**
-LangGraph agents, multimodal extraction, FHIR/MCP, Docker/CI/CD,
-OpenTelemetry, auth, rate limiting, reranker, Kubernetes.
+Docker/CI/CD, OpenTelemetry, reranker, Kubernetes, OCR model evaluation
+harness, SMART-on-FHIR, multi-user/Streamable-HTTP MCP, write-capable MCP
+tools.

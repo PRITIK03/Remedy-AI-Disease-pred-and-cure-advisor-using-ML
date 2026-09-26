@@ -24,8 +24,16 @@ dependencies = [
     "pgvector>=0.3",
     "pyyaml>=6",
     "httpx>=0.27",
+    "pwdlib[argon2]>=0.2",
+    "email-validator>=2.0",
+    "fakeredis>=2.20",
     "langgraph>=1.0",
     "langgraph-checkpoint-postgres>=2.0",
+    "pypdf>=5",
+    "pypdfium2>=4",
+    "pillow>=11",
+    "python-multipart>=0.0.18",
+    "mcp>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -48,7 +56,10 @@ target-version = "py311"
 select = ["E", "F", "W", "I", "N", "UP", "B"]
 # E501: line length handled by formatter
 # N803/N806: X/y naming is the established ML convention
-ignore = ["E501", "N803", "N806"]
+# N815: FHIR R4 mandates camelCase JSON element names (resourceType,
+#       effectiveDateTime, valueQuantity, ...), so the schema field names must
+#       keep the spec's casing even though Python style is snake_case.
+ignore = ["E501", "N803", "N806", "N815"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

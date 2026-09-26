@@ -32,11 +32,22 @@ class LLMUnconfiguredError(LLMError):
 
 
 class LLMClient(ABC):
-    """Provider-agnostic interface used by the guidance service."""
+    """Provider-agnostic interface used by guidance and report extraction services."""
 
     @abstractmethod
     def generate_structured(self, system: str, user: str, schema: type[T]) -> T:
         """Generate a response validated against the Pydantic schema."""
+
+    @abstractmethod
+    def generate_structured_multimodal(
+        self,
+        system: str,
+        user_prompt: str,
+        images_base64: list[dict[str, str]],
+        schema: type[T],
+    ) -> T:
+        """Generate a structured response given text prompt and images (data URIs / base64)."""
+
 
 
 class OpenAICompatibleLLM(LLMClient):
@@ -65,6 +76,20 @@ class OpenAICompatibleLLM(LLMClient):
         content = self._chat(system, user)
         return self._validate(content, schema)
 
+    def generate_structured_multimodal(
+        self,
+        system: str,
+        user_prompt: str,
+        images_base64: list[dict[str, str]],
+        schema: type[T],
+    ) -> T:
+        if not self.api_key or not self.model:
+            raise LLMUnconfiguredError(
+                "LLM provider not configured (set LLM_API_KEY and LLM_MODEL)."
+            )
+        content = self._chat_multimodal(system, user_prompt, images_base64)
+        return self._validate(content, schema)
+
     # ------------------------------------------------------------------ #
     def _chat(self, system: str, user: str) -> str:
         payload: dict[str, Any] = {
@@ -75,6 +100,37 @@ class OpenAICompatibleLLM(LLMClient):
                 {"role": "user", "content": user},
             ],
         }
+        return self._send_request(payload)
+
+    def _chat_multimodal(
+        self,
+        system: str,
+        user_prompt: str,
+        images: list[dict[str, str]],
+    ) -> str:
+        # Build multimodal OpenAI user content parts:
+        user_content: list[dict[str, Any]] = [{"type": "text", "text": user_prompt}]
+        for img in images:
+            mime = img.get("mime_type", "image/png")
+            b64 = img.get("data", "")
+            user_content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{mime};base64,{b64}",
+                },
+            })
+
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "temperature": self.temperature,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_content},
+            ],
+        }
+        return self._send_request(payload)
+
+    def _send_request(self, payload: dict[str, Any]) -> str:
         try:
             with httpx.Client(timeout=self.timeout) as client:
                 resp = client.post(
@@ -98,6 +154,7 @@ class OpenAICompatibleLLM(LLMClient):
             return data["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError, ValueError) as exc:
             raise LLMError("LLM provider returned malformed JSON.") from exc
+
 
     def _validate(self, content: str, schema: type[T]) -> T:
         """Parse the model's JSON and validate. Raises LLMError on garbage."""

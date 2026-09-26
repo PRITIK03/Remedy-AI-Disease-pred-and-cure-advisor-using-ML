@@ -18,18 +18,24 @@ from backend.app.core.logging import get_logger
 logger = get_logger("backend.guidance_service")
 
 
-def run_guidance(db: Session, assessment_id: UUID) -> dict:
+def run_guidance(db: Session, assessment_id: UUID, user_id=None) -> dict:
     """Run the LangGraph guidance workflow for one assessment.
 
     The graph reuses the existing services (assessment storage, RAG
     retrieval, LLM abstraction, safety/citation validation) behind a
     deterministic orchestration. Review-pending is surfaced as 202 so the
     frontend can distinguish it from a normal response.
+
+    Phase 6: user_id is passed through so the checkpoint thread id is
+    user-scoped (one user can never resume another user's review thread).
+    Ownership has already been verified by the API layer.
     """
     from backend.app.agents import service as agent_service
 
     try:
-        return agent_service.run_guidance_workflow(db, str(assessment_id))
+        return agent_service.run_guidance_workflow(
+            db, str(assessment_id), user_id=str(user_id) if user_id else None
+        )
     except agent_service.AssessmentNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

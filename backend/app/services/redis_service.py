@@ -30,10 +30,13 @@ class RedisService:
         self._url = redis_url
 
     async def connect(self) -> None:
-        self._redis = aioredis.from_url(
+        # Assign _redis ONLY after a successful ping: a half-open client must
+        # never look "ready" (fail-closed posture for sessions/rate limits).
+        client = aioredis.from_url(
             self._url, decode_responses=True, socket_connect_timeout=3
         )
-        await self._redis.ping()
+        await client.ping()
+        self._redis = client
         logger.info("Redis connected")
 
     async def close(self) -> None:

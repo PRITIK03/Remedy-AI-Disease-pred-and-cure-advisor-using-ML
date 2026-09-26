@@ -21,7 +21,6 @@ class TestHealthEndpoints:
         body = resp.json()
         assert body["status"] == "ok"
         assert body["model_version"] == "v2"
-
     def test_ready_reports_all_services(self, client):
         resp = client.get("/ready")
         assert resp.status_code == 200
@@ -39,8 +38,8 @@ class TestHealthEndpoints:
 
 @requires_pg
 class TestCreateAssessment:
-    def test_create_returns_201_and_structured_result(self, client):
-        resp = client.post("/api/v1/assessments", json=VALID_PAYLOAD)
+    def test_create_returns_201_and_structured_result(self, auth_client):
+        resp = auth_client.post("/api/v1/assessments", json=VALID_PAYLOAD)
         assert resp.status_code == 201
         body = resp.json()
         assert body["model_version"] == "2.0.0"
@@ -49,33 +48,33 @@ class TestCreateAssessment:
         assert isinstance(body["predicted_disease"], bool)
         assert body["input_features"]["age"] == 45
 
-    def test_persistence_roundtrip(self, client):
-        created = client.post("/api/v1/assessments", json=VALID_PAYLOAD).json()
-        fetched = client.get(f"/api/v1/assessments/{created['id']}")
+    def test_persistence_roundtrip(self, auth_client):
+        created = auth_client.post("/api/v1/assessments", json=VALID_PAYLOAD).json()
+        fetched = auth_client.get(f"/api/v1/assessments/{created['id']}")
         assert fetched.status_code == 200
         body = fetched.json()
         assert body["id"] == created["id"]
         assert body["disease_probability"] == created["disease_probability"]
         assert body["model_version"] == created["model_version"] == "2.0.0"
 
-    def test_semantics_healthy_profile_low_probability(self, client):
+    def test_semantics_healthy_profile_low_probability(self, auth_client):
         """Phase 1 corrected semantics must hold through the API."""
-        resp = client.post("/api/v1/assessments", json=VALID_PAYLOAD)
+        resp = auth_client.post("/api/v1/assessments", json=VALID_PAYLOAD)
         assert resp.json()["disease_probability"] < 0.5
 
-    def test_semantics_sick_profile_high_probability(self, client):
+    def test_semantics_sick_profile_high_probability(self, auth_client):
         sick = {**VALID_PAYLOAD, "age": 65, "cp": 3, "trestbps": 160,
                 "chol": 300, "fbs": 1, "restecg": 2, "thalach": 100,
                 "exang": 1, "oldpeak": 2.5, "slope": 2, "ca": 3, "thal": 3}
-        resp = client.post("/api/v1/assessments", json=sick)
+        resp = auth_client.post("/api/v1/assessments", json=sick)
         assert resp.json()["disease_probability"] > 0.5
 
-    def test_request_id_header_present(self, client):
-        resp = client.post("/api/v1/assessments", json=VALID_PAYLOAD)
+    def test_request_id_header_present(self, auth_client):
+        resp = auth_client.post("/api/v1/assessments", json=VALID_PAYLOAD)
         assert "x-request-id" in resp.headers
 
-    def test_custom_request_id_echoed(self, client):
-        resp = client.post(
+    def test_custom_request_id_echoed(self, auth_client):
+        resp = auth_client.post(
             "/api/v1/assessments",
             json=VALID_PAYLOAD,
             headers={"X-Request-ID": "test-rid-123"},
@@ -85,9 +84,9 @@ class TestCreateAssessment:
 
 @requires_pg
 class TestExplanationEndpoint:
-    def test_explanation_returns_contributions(self, client):
-        created = client.post("/api/v1/assessments", json=VALID_PAYLOAD).json()
-        resp = client.get(f"/api/v1/assessments/{created['id']}/explanation")
+    def test_explanation_returns_contributions(self, auth_client):
+        created = auth_client.post("/api/v1/assessments", json=VALID_PAYLOAD).json()
+        resp = auth_client.get(f"/api/v1/assessments/{created['id']}/explanation")
         assert resp.status_code == 200
         body = resp.json()
         assert body["assessment_id"] == created["id"]
@@ -96,10 +95,10 @@ class TestExplanationEndpoint:
         assert all("feature" in c and "shap_value" in c for c in body["contributions"])
         assert "not" in body["note"].lower() and "causal" in body["note"].lower()
 
-    def test_explanation_missing_assessment_404(self, client):
+    def test_explanation_missing_assessment_404(self, auth_client):
         import uuid as uuid_mod
 
-        resp = client.get(
+        resp = auth_client.get(
             f"/api/v1/assessments/{uuid_mod.uuid4()}/explanation"
         )
         assert resp.status_code == 404
@@ -107,25 +106,25 @@ class TestExplanationEndpoint:
 
 @requires_pg
 class TestValidation:
-    def test_missing_field_422(self, client):
+    def test_missing_field_422(self, auth_client):
         bad = {k: v for k, v in VALID_PAYLOAD.items() if k != "chol"}
-        resp = client.post("/api/v1/assessments", json=bad)
+        resp = auth_client.post("/api/v1/assessments", json=bad)
         assert resp.status_code == 422
 
-    def test_invalid_categorical_422(self, client):
-        resp = client.post("/api/v1/assessments", json={**VALID_PAYLOAD, "cp": 7})
+    def test_invalid_categorical_422(self, auth_client):
+        resp = auth_client.post("/api/v1/assessments", json={**VALID_PAYLOAD, "cp": 7})
         assert resp.status_code == 422
 
-    def test_invalid_numeric_range_422(self, client):
-        resp = client.post("/api/v1/assessments", json={**VALID_PAYLOAD, "trestbps": 999})
+    def test_invalid_numeric_range_422(self, auth_client):
+        resp = auth_client.post("/api/v1/assessments", json={**VALID_PAYLOAD, "trestbps": 999})
         assert resp.status_code == 422
 
-    def test_invalid_type_422(self, client):
-        resp = client.post("/api/v1/assessments", json={**VALID_PAYLOAD, "age": "old"})
+    def test_invalid_type_422(self, auth_client):
+        resp = auth_client.post("/api/v1/assessments", json={**VALID_PAYLOAD, "age": "old"})
         assert resp.status_code == 422
 
-    def test_extra_fields_rejected_strict_mode(self, client):
-        resp = client.post(
+    def test_extra_fields_rejected_strict_mode(self, auth_client):
+        resp = auth_client.post(
             "/api/v1/assessments", json={**VALID_PAYLOAD, "injected": "x"}
         )
         assert resp.status_code == 422
@@ -133,28 +132,28 @@ class TestValidation:
 
 @requires_pg
 class TestRetrieval:
-    def test_get_nonexistent_404(self, client):
+    def test_get_nonexistent_404(self, auth_client):
         random_id = str(uuid.uuid4())
-        resp = client.get(f"/api/v1/assessments/{random_id}")
+        resp = auth_client.get(f"/api/v1/assessments/{random_id}")
         assert resp.status_code == 404
 
-    def test_get_malformed_uuid_422(self, client):
-        resp = client.get("/api/v1/assessments/not-a-uuid")
+    def test_get_malformed_uuid_422(self, auth_client):
+        resp = auth_client.get("/api/v1/assessments/not-a-uuid")
         assert resp.status_code == 422
 
-    def test_pagination(self, client):
+    def test_pagination(self, auth_client):
         for _ in range(5):
-            client.post("/api/v1/assessments", json=VALID_PAYLOAD)
-        page1 = client.get("/api/v1/assessments?limit=2&offset=0").json()
-        page2 = client.get("/api/v1/assessments?limit=2&offset=2").json()
+            auth_client.post("/api/v1/assessments", json=VALID_PAYLOAD)
+        page1 = auth_client.get("/api/v1/assessments?limit=2&offset=0").json()
+        page2 = auth_client.get("/api/v1/assessments?limit=2&offset=2").json()
         assert page1["total"] == 5
         assert len(page1["items"]) == 2
         assert len(page2["items"]) == 2
         ids = {i["id"] for i in page1["items"]} & {i["id"] for i in page2["items"]}
         assert not ids  # no overlap between pages
 
-    def test_limit_capped(self, client):
-        resp = client.get("/api/v1/assessments?limit=500")
+    def test_limit_capped(self, auth_client):
+        resp = auth_client.get("/api/v1/assessments?limit=500")
         assert resp.status_code == 422
 
 

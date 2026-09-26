@@ -86,9 +86,25 @@ class FakeLLM:
             raise LLMError("simulated provider outage")
         return schema.model_validate(self.output)
 
+    def generate_structured_multimodal(
+        self, system: str, user_prompt: str, images_base64: list, schema
+    ):
+        self.calls += 1
+        if self.fail:
+            from backend.app.llm.client import LLMError
+
+            raise LLMError("simulated provider outage")
+        return schema.model_validate(self.output)
+
 
 class FakeMalformedLLM(FakeLLM):
     def generate_structured(self, system: str, user: str, schema):
+        self.calls += 1
+        return schema.model_validate({**self.output, "summary": 12345})
+
+    def generate_structured_multimodal(
+        self, system: str, user_prompt: str, images_base64: list, schema
+    ):
         self.calls += 1
         return schema.model_validate({**self.output, "summary": 12345})
 

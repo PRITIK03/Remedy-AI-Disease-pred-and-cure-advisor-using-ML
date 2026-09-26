@@ -12,7 +12,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from backend.app.api.v1 import assessments
+from backend.app.api.v1 import assessments, auth, fhir, reports
 
 api_v1_router = APIRouter()
+api_v1_router.include_router(auth.router, prefix="/api/v1")
 api_v1_router.include_router(assessments.router, prefix="/api/v1")
+api_v1_router.include_router(reports.router, prefix="/api/v1")
+api_v1_router.include_router(fhir.router, prefix="/api/v1")
+

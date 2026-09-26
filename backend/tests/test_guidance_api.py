@@ -64,9 +64,21 @@ class StubLLM:
     def generate_structured(self, system: str, user: str, schema):
         return schema.model_validate(self.output)
 
+    def generate_structured_multimodal(
+        self, system: str, user_prompt: str, images_base64: list, schema
+    ):
+        return schema.model_validate(self.output)
+
 
 class FailingLLM(StubLLM):
     def generate_structured(self, system: str, user: str, schema):
+        from backend.app.llm.client import LLMError
+
+        raise LLMError("provider down")
+
+    def generate_structured_multimodal(
+        self, system: str, user_prompt: str, images_base64: list, schema
+    ):
         from backend.app.llm.client import LLMError
 
         raise LLMError("provider down")
@@ -76,6 +88,10 @@ def _create_assessment(client) -> str:
     resp = client.post("/api/v1/assessments", json=VALID_PAYLOAD)
     assert resp.status_code == 201
     return resp.json()["id"]
+
+
+# NOTE: all tests in this module use the `auth_client` fixture (a logged-in,
+# CSRF-auto-echoing client) — the assessment endpoints now require a session.
 
 
 def _stub_evidence() -> list[dict]:
@@ -94,14 +110,14 @@ def _stub_evidence() -> list[dict]:
 
 @requires_pg
 class TestGuidanceEndpoint:
-    def test_404_for_unknown_assessment(self, client):
+    def test_404_for_unknown_assessment(self, auth_client):
         import uuid
 
-        resp = client.post(f"/api/v1/assessments/{uuid.uuid4()}/guidance")
+        resp = auth_client.post(f"/api/v1/assessments/{uuid.uuid4()}/guidance")
         assert resp.status_code == 404
 
-    def test_guidance_success_with_verified_citations(self, client, monkeypatch):
-        assessment_id = _create_assessment(client)
+    def test_guidance_success_with_verified_citations(self, auth_client, monkeypatch):
+        assessment_id = _create_assessment(auth_client)
 
         # Phase 5: the endpoint runs the LangGraph workflow with the default
         # client factory patched to a stub (graph passes it into nodes).
@@ -115,7 +131,7 @@ class TestGuidanceEndpoint:
             "backend.app.llm.client.get_llm_client",
             return_value=StubLLM(STUB_LLM_OUTPUT),
         ):
-            resp = client.post(f"/api/v1/assessments/{assessment_id}/guidance")
+            resp = auth_client.post(f"/api/v1/assessments/{assessment_id}/guidance")
 
         assert resp.status_code == 202, resp.text  # review not auto-released
         body = resp.json()
@@ -126,11 +142,11 @@ class TestGuidanceEndpoint:
         assert detail["assessment"]["model_version"] == "2.0.0"
         get_settings.cache_clear()
 
-    def test_fabricated_citations_are_dropped(self, client, monkeypatch):
+    def test_fabricated_citations_are_dropped(self, auth_client, monkeypatch):
         """Fabricated citations are now verified at the safety node INSIDE the
         graph (covered there); at the API level the flag forces a 202 review
         response instead of releasing guidance with citations."""
-        assessment_id = _create_assessment(client)
+        assessment_id = _create_assessment(auth_client)
         monkeypatch.setenv("LLM_API_KEY", "test-key")
         monkeypatch.setenv("LLM_MODEL", "test-model")
         from backend.app.core.config import get_settings
@@ -140,13 +156,13 @@ class TestGuidanceEndpoint:
             "backend.app.llm.client.get_llm_client",
             return_value=StubLLM(FABRICATED_LLM_OUTPUT),
         ):
-            resp = client.post(f"/api/v1/assessments/{assessment_id}/guidance")
+            resp = auth_client.post(f"/api/v1/assessments/{assessment_id}/guidance")
         assert resp.status_code == 202
         assert resp.json()["detail"]["review_required"] is True
         get_settings.cache_clear()
 
-    def test_llm_failure_maps_to_502(self, client, monkeypatch):
-        assessment_id = _create_assessment(client)
+    def test_llm_failure_maps_to_502(self, auth_client, monkeypatch):
+        assessment_id = _create_assessment(auth_client)
         monkeypatch.setenv("LLM_API_KEY", "test-key")
         monkeypatch.setenv("LLM_MODEL", "test-model")
         # RAG must look healthy, otherwise the flow routes to review before
@@ -167,12 +183,12 @@ class TestGuidanceEndpoint:
             "backend.app.llm.client.get_llm_client",
             return_value=FailingLLM(STUB_LLM_OUTPUT),
         ):
-            resp = client.post(f"/api/v1/assessments/{assessment_id}/guidance")
+            resp = auth_client.post(f"/api/v1/assessments/{assessment_id}/guidance")
         assert resp.status_code == 502
         get_settings.cache_clear()
 
-    def test_unconfigured_provider_maps_to_503(self, client, monkeypatch):
-        assessment_id = _create_assessment(client)
+    def test_unconfigured_provider_maps_to_503(self, auth_client, monkeypatch):
+        assessment_id = _create_assessment(auth_client)
         monkeypatch.setenv("EMBEDDING_API_KEY", "test-key")
         monkeypatch.setenv("EMBEDDING_MODEL", "test-model")
         monkeypatch.delenv("LLM_API_KEY", raising=False)
@@ -188,6 +204,6 @@ class TestGuidanceEndpoint:
         from backend.app.core.config import get_settings
 
         get_settings.cache_clear()
-        resp = client.post(f"/api/v1/assessments/{assessment_id}/guidance")
+        resp = auth_client.post(f"/api/v1/assessments/{assessment_id}/guidance")
         assert resp.status_code == 503
         get_settings.cache_clear()

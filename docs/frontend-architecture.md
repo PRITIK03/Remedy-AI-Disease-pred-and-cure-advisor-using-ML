@@ -113,5 +113,6 @@ With backend: `uvicorn backend.app.main:app --port 8000` and
 
 ## Planned (not implemented)
 
-Authentication-adjacent UX, conversational assistant, report upload,
-wearable integration — all later phases per the roadmap.
+Conversational assistant, wearable integration — later phases per the
+roadmap. (Authentication UX landed in Phase 6; the report upload + review
+screens landed in Phase 7 — see docs/report-ingestion.md.)

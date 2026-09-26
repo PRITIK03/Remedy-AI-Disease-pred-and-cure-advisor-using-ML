@@ -46,6 +46,19 @@ mlflow.db-*
 # Datasets: ml/data/heart.csv and dataset_meta.json are intentionally
 # TRACKED (provenance snapshot, phase 1 rule). Do not ignore ml/data.
 
+# Uploaded medical reports / local storage (Phase 7)
+data/
+/data/
+/storage/
+uploads/
+/uploads/
+.local/
+/.local/
+.mcp/
+/.mcp/
+runtime/
+/runtime/
+
 # OS / editor junk
 .idea/
 .vscode/

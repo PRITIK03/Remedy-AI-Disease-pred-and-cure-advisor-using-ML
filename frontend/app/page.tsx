@@ -39,6 +39,9 @@ export default function DashboardPage() {
               <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
             </Link>
           </Button>
+          <Button asChild size="lg" variant="secondary" className="w-full sm:w-auto">
+            <Link href="/report">Upload Report</Link>
+          </Button>
           <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
             <Link href="/history">View History</Link>
           </Button>

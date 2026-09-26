@@ -4,14 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { Activity, ClipboardList, Home, Moon, PlusCircle, Sun } from "lucide-react";
+import { Activity, ClipboardList, FileUp, Home, Moon, PlusCircle, Sun } from "lucide-react";
 
 import { api, ApiError } from "@/lib/api";
+import { UserMenu } from "@/components/layout/user-menu";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/assessment", label: "New Assessment", icon: PlusCircle },
+  { href: "/report", label: "Upload Report", icon: FileUp },
   { href: "/history", label: "History", icon: ClipboardList },
 ];
 
@@ -128,6 +130,7 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-3">
           <StatusIndicator />
           <ThemeToggle />
+          <UserMenu />
         </div>
       </div>
 

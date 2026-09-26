@@ -46,6 +46,10 @@ export interface AssessmentResponse {
   probability_label: ProbabilityLabel;
   created_at: string;
   input_features: AssessmentCreate;
+  /** Phase 7 provenance: "manual" form entry or "report" confirmed extraction. */
+  source: "manual" | "report" | string;
+  /** UUID of the source medical report when source === "report". */
+  report_id: string | null;
 }
 
 export interface AssessmentListResponse {
@@ -140,4 +144,56 @@ export interface ApiError {
     message: string;
   };
   request_id?: string | null;
+}
+
+/** --- Phase 7: medical report ingestion ------------------------------------ */
+
+/** One validated extraction row returned by the report API. */
+export interface ReportExtractionResponse {
+  id: string;
+  report_id: string;
+  extraction_model: string;
+  prompt_version: string;
+  extracted_features: Record<string, number | null>;
+  confidences: Record<string, number>;
+  evidence: Record<string, string>;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface MedicalReportResponse {
+  id: string;
+  filename: string;
+  mime_type: string;
+  file_size_bytes: number;
+  file_hash: string;
+  status: "pending" | "processing" | "completed" | "failed" | string;
+  error_message: string | null;
+  created_at: string;
+  latest_extraction: ReportExtractionResponse | null;
+}
+
+export interface MedicalReportListResponse {
+  items: MedicalReportResponse[];
+  total: number;
+}
+
+/** Confirmed / user-edited 13-field payload used to create an assessment from a report. */
+export type ConfirmReportAssessmentRequest = AssessmentCreate;
+
+/** --- Auth (Phase 6) ------------------------------------------------------ */
+
+/** Safe user shape — the backend NEVER returns password hashes. */
+export interface UserPublic {
+  id: string;
+  email: string;
+  display_name: string | null;
+  role: "user" | "reviewer" | "admin";
+  is_active: boolean;
+  created_at: string;
+}
+
+/** Response of POST /api/v1/auth/register and /login (no session ids). */
+export interface AuthResponse {
+  user: UserPublic;
 }

@@ -13,7 +13,12 @@ from sqlalchemy import engine_from_config, pool
 
 from backend.app.core.config import get_settings
 from backend.app.db.base import Base
-from backend.app.db.models import Assessment, User  # noqa: F401 - register tables
+from backend.app.db.models import (  # noqa: F401 - register tables
+    Assessment,
+    MedicalReport,
+    ReportExtraction,
+    User,
+)
 
 config = context.config
 

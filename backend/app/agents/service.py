@@ -16,10 +16,12 @@ from backend.app.core.logging import get_logger
 
 logger = get_logger("backend.agents.service")
 
-# Thread id = assessment id for this unauthenticated demo. When
-# authentication/multi-user isolation is introduced this MUST become
-# f"{user_id}:{assessment_id}" (or similar) — see docs/langgraph-architecture.md.
-def thread_id_for(assessment_id: str) -> str:
+# Thread ids are USER-SCOPED (Phase 6): the assessment owner's id is part
+# of the deterministic thread key, so one user can never resume another
+# user's review workflow even with the assessment id.
+def thread_id_for(assessment_id: str, user_id: str | None = None) -> str:
+    if user_id:
+        return f"guidance:{user_id}:{assessment_id}"
     return f"guidance:{assessment_id}"
 
 
@@ -44,7 +46,9 @@ class ReviewPendingError(RuntimeError):
         self.payload = payload
 
 
-def run_guidance_workflow(db, assessment_id: str, llm_client=None) -> dict[str, Any]:
+def run_guidance_workflow(
+    db, assessment_id: str, llm_client=None, user_id: str | None = None
+) -> dict[str, Any]:
     """Execute the graph and return the API-shaped guidance payload.
 
     Raises:
@@ -55,7 +59,7 @@ def run_guidance_workflow(db, assessment_id: str, llm_client=None) -> dict[str, 
     from backend.app.agents.graph import build_guidance_graph
 
     graph = build_guidance_graph(db, assessment_id, llm_client)
-    config = {"configurable": {"thread_id": thread_id_for(assessment_id)}}
+    config = {"configurable": {"thread_id": thread_id_for(assessment_id, user_id)}}
     final: dict[str, Any] = graph.invoke(
         {"assessment_id": assessment_id}, config=config
     )
@@ -88,13 +92,17 @@ def run_guidance_workflow(db, assessment_id: str, llm_client=None) -> dict[str, 
 
 
 def resume_review(
-    db, assessment_id: str, decision: str, reviewer_note: str = ""
+    db,
+    assessment_id: str,
+    decision: str,
+    reviewer_note: str = "",
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """Resume the workflow from the human-review boundary.
 
     decision: "approve" (release generated guidance) or "reject" (discard).
-    This is a workflow boundary only — no reviewer identity exists yet
-    (unauthenticated demo), so nothing pretends a clinician approved.
+    Phase 6: user_id scopes the checkpoint thread; reviewer identity/roles
+    (reviewer/admin) are groundwork for the future review workflow UI.
     """
     from backend.app.agents.graph import build_guidance_graph
 
@@ -102,7 +110,7 @@ def resume_review(
         raise ValueError("decision must be 'approve' or 'reject'")
 
     graph = build_guidance_graph(db, assessment_id)
-    config = {"configurable": {"thread_id": thread_id_for(assessment_id)}}
+    config = {"configurable": {"thread_id": thread_id_for(assessment_id, user_id)}}
     snapshot = graph.get_state(config)
     if snapshot is None or not snapshot.values:
         raise AssessmentNotFoundError(assessment_id)

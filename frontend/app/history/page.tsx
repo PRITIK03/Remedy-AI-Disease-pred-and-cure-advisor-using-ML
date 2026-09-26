@@ -6,6 +6,7 @@ import { AlertCircle, ChevronLeft, ChevronRight, Inbox, PlusCircle } from "lucid
 
 import { HistoryCards } from "@/components/history/history-cards";
 import { HistoryTable } from "@/components/history/history-table";
+import { RequireAuth } from "@/lib/use-auth";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,6 +23,14 @@ import type { AssessmentListResponse } from "@/types/api";
 const PAGE_SIZE = 10;
 
 export default function HistoryPage() {
+  return (
+    <RequireAuth>
+      <HistoryContent />
+    </RequireAuth>
+  );
+}
+
+function HistoryContent() {
   const [data, setData] = useState<AssessmentListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

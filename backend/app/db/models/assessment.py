@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, Index, Numeric, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import JSON, ForeignKey, Index, Numeric, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from backend.app.db.models.report import MedicalReport
 
 
 class Assessment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -28,6 +31,23 @@ class Assessment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     slope: Mapped[int] = mapped_column(nullable=False)
     ca: Mapped[int] = mapped_column(nullable=False)
     thal: Mapped[int] = mapped_column(nullable=False)
+
+    # --- Ownership (Phase 6) -------------------------------------------------- #
+    # Owner of this assessment. Nullable at the DB level only for legacy
+    # pre-auth rows; the API always sets it for new assessments.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+
+    # --- Provenance / Ingestion Source (Phase 7) ------------------------------ #
+    # source: "manual" (form entry) or "report" (confirmed extraction)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, server_default="manual")
+    report_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("medical_reports.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    report: Mapped[MedicalReport | None] = relationship(
+        "MedicalReport", back_populates="assessments"
+    )
 
     # --- Prediction result --------------------------------------------------- #
     model_version: Mapped[str] = mapped_column(String(32), nullable=False)

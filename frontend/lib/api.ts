@@ -9,9 +9,12 @@ import type {
   AssessmentCreate,
   AssessmentListResponse,
   AssessmentResponse,
+  ConfirmReportAssessmentRequest,
   ExplanationResponse,
   GuidanceResponse,
   HealthResponse,
+  MedicalReportListResponse,
+  MedicalReportResponse,
   ReadinessResponse,
 } from "@/types/api";
 
@@ -19,6 +22,19 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").rep
   /\/$/,
   ""
 );
+
+export function apiBaseUrl(): string {
+  return API_URL;
+}
+
+function readCsrfHeader(): Record<string, string> {
+  if (typeof document === "undefined") return {};
+  const match = document.cookie
+    .split("; ")
+    .find((c) => c.startsWith("remedy_csrf="));
+  const token = match?.split("=")[1];
+  return token ? { "X-CSRF-Token": token } : {};
+}
 
 export class ApiError extends Error {
   readonly status: number;
@@ -49,7 +65,9 @@ async function request<T>(
         ...(options.headers ?? {}),
       },
       signal: controller.signal,
-      // Assessment data is sensitive; never let the browser cache it.
+      // Cookies travel with every API call (Phase 6 session auth) and
+      // assessment data is sensitive; never let the browser cache it.
+      credentials: "include" as RequestCredentials,
       cache: "no-store",
     });
     if (!res.ok) {
@@ -99,6 +117,9 @@ async function request<T>(
 }
 
 export const api = {
+  /** Exposed for auth helpers (CSRF bootstrap) and tests. */
+  baseUrl: apiBaseUrl,
+
   createAssessment(payload: AssessmentCreate): Promise<AssessmentResponse> {
     return request<AssessmentResponse>("/api/v1/assessments", {
       method: "POST",
@@ -129,6 +150,63 @@ export const api = {
       `/api/v1/assessments/${encodeURIComponent(id)}/guidance`,
       { method: "POST" },
       45000
+    );
+  },
+
+  /** Phase 7: upload a medical report (multipart/form-data). */
+  uploadReport(file: File): Promise<MedicalReportResponse> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90000);
+    return fetch(`${apiBaseUrl()}/api/v1/reports`, {
+      method: "POST",
+      body: fd,
+      // CSRF token must be echoed manually because Content-Type is multipart.
+      headers: readCsrfHeader(),
+      credentials: "include" as RequestCredentials,
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        clearTimeout(timer);
+        if (!res.ok) {
+          let message = `Upload failed with status ${res.status}`;
+          try {
+            const body = (await res.json()) as { detail?: unknown };
+            if (typeof body.detail === "string") message = body.detail;
+          } catch {
+            /* keep default */
+          }
+          throw new ApiError(res.status, "upload_error", message);
+        }
+        return (await res.json()) as MedicalReportResponse;
+      })
+      .catch((error: unknown) => {
+        clearTimeout(timer);
+        if (error instanceof ApiError) throw error;
+        if (error instanceof DOMException && error.name === "AbortError") {
+          throw new ApiError(0, "timeout", "The upload timed out. Please try again.");
+        }
+        throw new ApiError(0, "network_error", "Cannot reach the server. Is the backend running?");
+      });
+  },
+
+  listReports(limit = 20, offset = 0): Promise<MedicalReportListResponse> {
+    return request<MedicalReportListResponse>(
+      `/api/v1/reports?limit=${limit}&offset=${offset}`
+    );
+  },
+
+  getReport(id: string): Promise<MedicalReportResponse> {
+    return request<MedicalReportResponse>(`/api/v1/reports/${encodeURIComponent(id)}`);
+  },
+
+  confirmReport(id: string, payload: ConfirmReportAssessmentRequest): Promise<AssessmentResponse> {
+    return request<AssessmentResponse>(
+      `/api/v1/reports/${encodeURIComponent(id)}/confirm`,
+      { method: "POST", body: JSON.stringify(payload) },
+      30000
     );
   },
 

@@ -30,11 +30,24 @@ import {
 } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, apiBaseUrl } from "@/lib/api";
+import { RequireAuth } from "@/lib/use-auth";
 import { formatDateTime, formatPercentPrecise } from "@/lib/utils";
 import type { AssessmentResponse, ExplanationResponse } from "@/types/api";
 
 export default function ResultsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  return (
+    <RequireAuth>
+      <ResultsContent params={params} />
+    </RequireAuth>
+  );
+}
+
+function ResultsContent({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -315,6 +328,20 @@ export default function ResultsPage({
           <Link href="/history">View History</Link>
         </Button>
       </div>
+
+      {/* Interoperability (Phase 8): read-only FHIR R4 export. */}
+      <p className="mt-4 text-xs text-muted-foreground">
+        Need this in a healthcare system?{" "}
+        <a
+          href={`${apiBaseUrl()}/api/v1/fhir/assessments/${encodeURIComponent(assessment.id)}`}
+          className="underline underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          Export as FHIR R4
+        </a>{" "}
+        — a read-only Bundle of Patient, Observation, and DiagnosticReport
+        resources generated from this assessment. It is not an EHR export and
+        contains no diagnosis.
+      </p>
     </div>
   );
 }

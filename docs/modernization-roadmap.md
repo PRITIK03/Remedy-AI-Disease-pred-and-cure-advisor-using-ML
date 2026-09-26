@@ -50,15 +50,21 @@ system runnable and tested.
 - Tool calling (read-only initially), state persistence, safety checks,
   evaluation harness for agent trajectories.
 
-## Phase 6 — Multimodal
+## Phase 6 — Multimodal (DELIVERED as Phase 7)
 - Medical/lab report extraction (PDF/image → structured fields) with
-  human confirmation before any prediction; OCR/vision model evaluation;
-  confidence gating and audit trail.
+  human confirmation before any prediction; confidence gating and audit trail.
+- Delivered after authentication (auth occupied the Phase 6 slot as
+  implemented): see `docs/report-ingestion.md`. OCR/vision model *evaluation*
+  harness remains open.
 
-## Phase 7 — Healthcare interoperability (FHIR / MCP)
-- FHIR resources (Observation, Patient, RiskAssessment) on synthetic data
-  (Synthea); possibly SMART on FHIR.
-- MCP server exposing read-only tools (assess, explain, history).
+## Phase 7 — Healthcare interoperability (FHIR / MCP) — DELIVERED
+- FHIR R4 resources (`Patient`, `Observation`, `DiagnosticReport`) serialized
+  from data the application already stores, exposed read-only at
+  `GET /api/v1/fhir/assessments/{id}` and `GET /api/v1/fhir/reports/{id}`.
+  Ownership-scoped like the rest of the API; nothing is invented.
+- MCP server (official SDK v2, stdio) exposing five READ-ONLY tools bound to a
+  single configured account (`MCP_USER_ID`). No write tools, no raw DB access.
+- See `docs/fhir-mcp.md`. SMART-on-FHIR remains **planned**, not implemented.
 
 ## Phase 8 — Production hardening
 - Docker + docker-compose, CI/CD (lint, typecheck, tests, image build).

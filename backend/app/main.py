@@ -96,12 +96,15 @@ def create_app() -> FastAPI:
     )
 
     # --- CORS (configuration-driven; wildcard refused in production) -------- #
+    # Credentials are required for cookie auth: explicit origins only, and
+    # enough methods/headers for the authenticated API (incl. CSRF header).
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
         allow_credentials=True,
-        allow_methods=["GET", "POST"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allow_headers=["Content-Type", "X-Request-ID", settings.csrf_header_name],
+        expose_headers=["X-Request-ID"],
     )
 
     # --- Request ID + access logging middleware ------------------------------ #
@@ -131,7 +134,36 @@ def create_app() -> FastAPI:
             },
         )
         response.headers["X-Request-ID"] = request_id
+
+        # --- Security headers (Phase 6) ------------------------------------ #
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault(
+            "Referrer-Policy", "strict-origin-when-cross-origin"
+        )
+        if settings.is_production:
+            response.headers.setdefault(
+                "Strict-Transport-Security",
+                f"max-age={settings.hsts_max_age_seconds}; includeSubDomains",
+            )
+
+        # --- Cache-control for sensitive/authenticated responses ------------ #
+        # Never let browsers or shared caches persist personalized data.
+        if request.url.path.startswith("/api/v1/"):
+            response.headers.setdefault("Cache-Control", "no-store")
+
         return response
+
+    # --- Production config guard ------------------------------------------------ #
+    # Refuse to serve production traffic with an insecure setup.
+    if settings.is_production:
+        from backend.app.core.security import _csrf_secret  # noqa: F401
+
+        _csrf_secret(settings)  # raises if SECRET_KEY missing in production
+        if not settings.cookie_secure:
+            raise RuntimeError(
+                "COOKIE_SECURE must be true when APP_ENV=production"
+            )
 
     # --- Routers -------------------------------------------------------------- #
     # Health/readiness at the ROOT (operational endpoints, not business APIs).
