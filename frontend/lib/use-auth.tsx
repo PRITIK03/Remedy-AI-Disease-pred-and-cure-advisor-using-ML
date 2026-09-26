@@ -45,6 +45,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<UserPublic | null>(null);
 
+  // Session bootstrap on mount. Inside the effect we only AWAIT; all
+  // setState calls happen after an await point (async callback), which is the
+  // external-system (session API) subscription pattern the lint rule wants.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const current = await auth.getCurrentUser();
+        if (!cancelled) {
+          setUser(current);
+          setStatus(current ? "authenticated" : "anonymous");
+        }
+      } catch {
+        if (!cancelled) {
+          setUser(null);
+          setStatus("anonymous");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
       const current = await auth.getCurrentUser();
@@ -55,10 +79,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus("anonymous");
     }
   }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   const login = useCallback(
     async (email: string, password: string) => {

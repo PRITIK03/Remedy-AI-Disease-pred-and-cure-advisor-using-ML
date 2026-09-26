@@ -50,6 +50,7 @@ from ml.config import (
     MODERN_TARGET_SEMANTICS,
     PIPELINE_PATH,
     POSITIVE_CLASS,
+    PROJECT_ROOT,
     RANDOM_SEED,
     RAW_FEATURE_ORDER,
     SOURCE_TARGET_SEMANTICS,
@@ -406,9 +407,15 @@ def train(enable_mlflow: bool = True) -> dict:
                 mlflow.log_artifact(str(METADATA_PATH))
                 mlflow.log_artifact(str(METRICS_PATH))
 
+                # Record a PORTABLE tracking URI: the absolute sqlite path is
+                # machine-specific and must never leak into the tracked
+                # metadata.json artifact.
+                portable_tracking_uri = MLFLOW_TRACKING_URI.replace(
+                    (PROJECT_ROOT / "mlflow.db").as_posix(), "<PROJECT_ROOT>/mlflow.db"
+                )
                 mlflow_info = {
                     "enabled": True,
-                    "tracking_uri": MLFLOW_TRACKING_URI,
+                    "tracking_uri": portable_tracking_uri,
                     "experiment_name": MLFLOW_EXPERIMENT_NAME,
                     "experiment_id": run.info.experiment_id,
                     "run_id": run.info.run_id,

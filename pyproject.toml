@@ -79,3 +79,12 @@ addopts = "-q"
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
+
+# Explicit discovery: the repo is a flat layout with MULTIPLE top-level
+# packages, which setuptools refuses to auto-discover (it errors out with
+# "Multiple top-level packages discovered in a flat-layout" and aborts every
+# `pip install .` / `pip install -e .`). Name the real packages; `rag/` is
+# data-only (no __init__.py, read from disk), `tests`/`scripts`/`alembic` are
+# never shipped.
+[tool.setuptools.packages.find]
+include = ["backend*", "ml*", "mcp*"]

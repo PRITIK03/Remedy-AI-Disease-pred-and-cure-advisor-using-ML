@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, ShieldAlert } from "lucide-react";
@@ -25,20 +25,23 @@ export function initialReportValues(report: MedicalReportResponse): Record<strin
 }
 
 
+/** Pure per-render derivation; recomputes exactly when `values` changes. */
+function validateValues(values: Record<string, string>) {
+  const numeric: Record<string, number> = {};
+  for (const [k, v] of Object.entries(values)) {
+    if (v === "") return { ok: false as const, errors: { [k]: "Required" } };
+    const n = Number(v);
+    if (Number.isNaN(n)) return { ok: false as const, errors: { [k]: "Must be a number" } };
+    numeric[k] = n;
+  }
+  return validateAssessment(numeric);
+}
+
 export function ReportReviewForm({ report }: { report: MedicalReportResponse }) {
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(() => initialReportValues(report));
   const [busy, setBusy] = useState(false);
-  const validation = useMemo(() => {
-    const numeric: Record<string, number> = {};
-    for (const [k, v] of Object.entries(values)) {
-      if (v === "") return { ok: false as const, errors: { [k]: "Required" } };
-      const n = Number(v);
-      if (Number.isNaN(n)) return { ok: false as const, errors: { [k]: "Must be a number" } };
-      numeric[k] = n;
-    }
-    return validateAssessment(numeric);
-  }, [values]);
+  const validation = validateValues(values);
   async function handleConfirm() {
     if (!validation.ok) {
       toast.error("Fix the highlighted fields before confirming.");
