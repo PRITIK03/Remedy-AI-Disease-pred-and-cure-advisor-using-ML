@@ -122,8 +122,11 @@ jobs:
           file: backend/Dockerfile
           push: false
           # `load` is required so the image lands in the local daemon and the
-          # smoke-test step below can actually run it.
+          # smoke-test step below can actually run it. Without `tags:` the
+          # loaded image has no tag and `docker run remedy-ai-backend:latest`
+          # fails with exit 125.
           load: true
+          tags: remedy-ai-backend:latest
 
       - name: Build frontend image
         uses: docker/build-push-action@v7
@@ -132,6 +135,7 @@ jobs:
           file: frontend/Dockerfile
           push: false
           load: true
+          tags: remedy-ai-frontend:latest
           build-args: |
             NEXT_PUBLIC_API_URL=http://localhost:8000
 
