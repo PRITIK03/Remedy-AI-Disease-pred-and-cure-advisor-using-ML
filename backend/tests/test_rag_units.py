@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -87,7 +88,7 @@ class TestGuidanceSchema:
 
     def test_missing_field_rejected(self):
         bad = {k: v for k, v in VALID_GUIDANCE.items() if k != "summary"}
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             HealthGuidanceResponse.model_validate(bad)
 
     def test_invalid_url_rejected(self):
@@ -95,12 +96,12 @@ class TestGuidanceSchema:
         bad["citations"] = [
             {"title": "t", "source": "s", "url": "not-a-url", "section": "x"}
         ]
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             HealthGuidanceResponse.model_validate(bad)
 
     def test_extra_fields_rejected(self):
         bad = {**VALID_GUIDANCE, "hallucination": True}
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             HealthGuidanceResponse.model_validate(bad)
 
 

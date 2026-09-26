@@ -282,13 +282,10 @@ class TestSessionExpiryAndNoStore:
     def test_expired_session_is_rejected(self, client, test_database_url):
         register_and_login(client, USER_A, PASSWORD)
         # Force expiry by deleting the Redis key (TTL enforcement equivalent).
-        from backend.app.core.config import get_settings
         from backend.app.core.security import hash_session_id
-        from backend.app.services.session_service import SessionService
 
         session_id = client.cookies.get(SESSION_COOKIE)
         app = client.app
-        svc = SessionService(app.state.redis_service, get_settings().session_ttl_seconds)
         # fakeredis sync mirror: delete via the async client wrapped sync.
         redis = app.state.redis_service._redis
         import asyncio

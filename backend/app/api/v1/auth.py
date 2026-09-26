@@ -14,7 +14,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from backend.app.core.config import get_settings
 from backend.app.core.security import generate_csrf_token
-from backend.app.db.models import User
 from backend.app.dependencies import DbSessionDep, RedisServiceDep
 from backend.app.dependencies_auth import (
     CurrentUserDep,
@@ -30,8 +29,8 @@ from backend.app.schemas.auth import (
 )
 from backend.app.services import auth_service
 from backend.app.services.rate_limit_service import (
-    RateLimitExceededError,
     RateLimiter,
+    RateLimitExceededError,
 )
 from backend.app.services.session_service import (
     SessionStoreUnavailableError,
@@ -192,11 +191,11 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=auth_service.GENERIC_LOGIN_FAILED,
         ) from exc
-    except SessionStoreUnavailableError:
+    except SessionStoreUnavailableError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service temporarily unavailable.",
-        )
+        ) from exc
 
     try:
         session_id, _ = await session_service.create(str(user.id))

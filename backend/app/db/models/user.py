@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import enum
 
-from sqlalchemy import Boolean, Enum, String, func
+from sqlalchemy import Boolean, Enum, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
-class UserRole(str, enum.Enum):
+class UserRole(enum.StrEnum):
     user = "user"
     reviewer = "reviewer"
     admin = "admin"

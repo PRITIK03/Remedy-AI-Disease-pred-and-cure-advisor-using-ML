@@ -17,10 +17,9 @@ from backend.app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from backend.app.db.models.assessment import Assessment
-    from backend.app.db.models.user import User
 
 
-class ReportStatus(str, enum.Enum):
+class ReportStatus(enum.StrEnum):
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"

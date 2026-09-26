@@ -238,7 +238,6 @@ class TestClientContext:
         async def _startup():
             # Recreate services the same way lifespan does, bound to test DB.
             from backend.app.services.model_service import ModelService
-            from backend.app.services.redis_service import RedisService
 
             self.app.state.model_service = ModelService()
             self.app.state.model_service.load(None)

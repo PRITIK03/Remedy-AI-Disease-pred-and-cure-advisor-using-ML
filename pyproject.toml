@@ -47,6 +47,17 @@ dev = [
     "pytest-cov>=5",
     "ruff>=0.6",
 ]
+# S3-compatible object storage for STORAGE_BACKEND=s3.
+s3 = [
+    "boto3>=1.35",
+]
+# Optional OpenTelemetry request tracing (OTEL_ENABLED + OTLP endpoint).
+telemetry = [
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+    "opentelemetry-exporter-otlp-proto-http>=1.27",
+]
 
 [tool.ruff]
 line-length = 100

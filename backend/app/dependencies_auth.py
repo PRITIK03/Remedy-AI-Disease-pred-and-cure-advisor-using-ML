@@ -15,14 +15,12 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session
 
 from backend.app.core.config import get_settings
 from backend.app.core.security import verify_csrf_token
 from backend.app.db.models import User, UserRole
+from backend.app.dependencies import DbSessionDep
 from backend.app.services.session_service import SessionService
-
-from backend.app.dependencies import DbSessionDep, RedisServiceDep
 
 CSRF_UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 

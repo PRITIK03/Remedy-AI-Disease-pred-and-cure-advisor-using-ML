@@ -99,11 +99,46 @@ class Settings(BaseSettings):
     llm_prompt_version: str = "v1"
 
     # --- Medical Report Ingestion (Phase 7) ---------------------------------- #
-    storage_backend: str = "local"
+    storage_backend: str = "local"  # local | s3
     reports_storage_dir: str = "data/reports"
     reports_max_bytes: int = 10 * 1024 * 1024  # 10 MB default
     multimodal_model: str = ""  # if empty, falls back to llm_model
     reports_max_pdf_pages: int = 10
+
+    # --- S3-compatible object storage (Phase 9) ------------------------------ #
+    # Works with AWS S3, MinIO, Cloudflare R2, Backblaze B2, etc. Credentials
+    # are environment-driven only; an empty access/secret pair means "use the
+    # ambient IAM role / workload identity" (the recommended production setup).
+    s3_endpoint_url: str = ""  # empty → real AWS S3
+    s3_region: str = "us-east-1"
+    s3_bucket: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    s3_use_ssl: bool = True
+    s3_addressing_style: str = "path"  # path | virtual
+    s3_server_side_encryption: str = ""  # e.g. "AES256" or "aws:kms"
+    s3_kms_key_id: str = ""
+    s3_presigned_expiry_seconds: int = 900
+    s3_connect_timeout_seconds: float = 10.0
+    s3_read_timeout_seconds: float = 30.0
+
+    # --- OpenTelemetry (Phase 9) ---------------------------------------------- #
+    # When disabled (the default) spans are created but not exported. The
+    # endpoint is an OTLP/HTTP base URL; only operational attributes are ever
+    # recorded (see backend/app/telemetry.py for the allowlist).
+    otel_enabled: bool = False
+    otel_exporter_otlp_endpoint: str = ""
+
+    @field_validator("storage_backend")
+    @classmethod
+    def _validate_storage_backend(cls, v: str) -> str:
+        allowed = {"local", "s3"}
+        normalized = v.strip().lower()
+        if normalized not in allowed:
+            raise ValueError(
+                f"STORAGE_BACKEND must be one of {sorted(allowed)}, got '{v}'"
+            )
+        return normalized
 
 
     @field_validator("cors_origins")
@@ -159,6 +194,91 @@ class Settings(BaseSettings):
                 "configure explicit origins via CORS_ORIGINS."
             )
         return self.cors_origins
+
+    @property
+    def s3_configured(self) -> bool:
+        """True when an S3 bucket is set (endpoint and credentials optional)."""
+        return bool(self.s3_bucket)
+
+    def validate_production(self) -> None:
+        """Fail fast on insecure production configuration (Phase 9).
+
+        Called from the app factory when APP_ENV=production. Each rule here
+        corresponds to a real vulnerability class, and the messages name the
+        exact environment variable to set.
+        """
+        if not self.is_production:
+            return
+
+        problems: list[str] = []
+
+        # 1. Secret material must be explicitly provided (no dev fallback).
+        if not self.secret_key:
+            problems.append(
+                "SECRET_KEY is required in production (signing/CSRF secret)."
+            )
+        elif len(self.secret_key) < 32:
+            problems.append(
+                "SECRET_KEY must be at least 32 characters of high-entropy "
+                "material in production."
+            )
+
+        # 2. Cookies must only travel over TLS.
+        if not self.cookie_secure:
+            problems.append("COOKIE_SECURE must be true in production.")
+
+        # 3. CORS must be an explicit allowlist. `cors_origins` is a list by the
+        #    time it reaches here (see the _split_origins validator).
+        if "*" in self.cors_origins or not self.cors_origins:
+            problems.append(
+                "CORS_ORIGINS must list explicit origins in production "
+                "(wildcards are refused)."
+            )
+
+        # 4. Session lifetime must be bounded.
+        if self.session_ttl_seconds > 60 * 60 * 24:
+            problems.append("SESSION_TTL_SECONDS must not exceed 24 hours.")
+
+        # 5. Debug-level logging would risk leaking request detail.
+        if self.log_level.upper() == "DEBUG":
+            problems.append("LOG_LEVEL=DEBUG is not allowed in production.")
+
+        # 6. Object storage must be explicitly configured when selected.
+        if self.storage_backend == "s3" and not self.s3_bucket:
+            problems.append(
+                "S3_BUCKET is required when STORAGE_BACKEND=s3."
+            )
+
+        if problems:
+            raise RuntimeError(
+                "Insecure production configuration:\n  - "
+                + "\n  - ".join(problems)
+            )
+
+    def validate_runtime_services(self) -> list[str]:
+        """Non-fatal capability report for startup logging and /ready.
+
+        Returns a list of human-readable warnings. Never includes values of
+        secrets — only whether each integration is configured.
+        """
+        warnings: list[str] = []
+        if not self.llm_configured:
+            warnings.append(
+                "LLM provider not configured: AI guidance is unavailable."
+            )
+        if not self.rag_configured:
+            warnings.append(
+                "Embedding provider not configured: RAG retrieval is unavailable."
+            )
+        if self.storage_backend == "s3" and not self.s3_configured:
+            warnings.append("STORAGE_BACKEND=s3 but S3_BUCKET is not set.")
+        if self.storage_backend == "local" and self.is_production:
+            warnings.append(
+                "STORAGE_BACKEND=local in production: uploaded reports land on "
+                "container-local disk and are lost on redeploy. Use s3 for "
+                "multi-instance deployments."
+            )
+        return warnings
 
 
 @lru_cache

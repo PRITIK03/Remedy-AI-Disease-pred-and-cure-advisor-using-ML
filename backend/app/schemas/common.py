@@ -19,6 +19,10 @@ class ServiceStatus(BaseModel):
     database: str
     redis: str
     model: str
+    storage: str = Field(
+        default="ok",
+        description="Report storage backend ('ok', 'unavailable' or 'unconfigured').",
+    )
 
 
 class ReadinessResponse(BaseModel):

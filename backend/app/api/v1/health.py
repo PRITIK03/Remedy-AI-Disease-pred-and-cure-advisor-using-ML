@@ -56,5 +56,23 @@ async def ready(request: Request) -> ReadinessResponse:
     if redis_service is None or not await redis_service.ping():
         services["redis"] = "unavailable"
 
+    # --- Storage (Phase 9) --------------------------------------------------- #
+    # Report uploads must have a working destination, otherwise the ingestion
+    # path fails at request time. Report the backend name, never credentials.
+    services["storage"] = "ok"
+    try:
+        from backend.app.storage import get_storage_provider, storage_backend_name
+
+        backend_name = storage_backend_name()
+        if backend_name == "s3":
+            provider = get_storage_provider()
+            if not provider.exists(".remedy-healthcheck"):
+                services["storage"] = "unavailable"
+        else:
+            get_storage_provider()
+    except Exception as exc:  # noqa: BLE001 - readiness reports, never raises
+        services["storage"] = "unavailable"
+        logger.warning("Readiness: storage check failed: %s", type(exc).__name__)
+
     status = "ready" if all(v == "ok" for v in services.values()) else "not_ready"
     return ReadinessResponse(status=status, services=ServiceStatus(**services))

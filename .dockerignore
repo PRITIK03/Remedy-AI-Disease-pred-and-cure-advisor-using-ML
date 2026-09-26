@@ -1,0 +1,76 @@
+# Build context exclusions (repository root context).
+#
+# The most important line here is the .env rule: a real .env must never end up
+# in an image layer. Everything here is either a secret, a large regenerable
+# artifact, or VCS/tooling noise that would bloat the build context.
+
+# --- Secrets and local configuration (never bake into an image) ---
+.env
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+*.pem
+*.key
+*.p12
+secrets/
+
+# --- Version control / tooling ---
+.git/
+.gitignore
+.github/
+.venv/
+venv/
+.idea/
+.vscode/
+.kilo/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ruff_cache
+*.tsbuildinfo
+**/tsconfig.tsbuildinfo
+
+# --- Python caches ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.coverage
+htmlcov/
+
+# --- Node ---
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# --- Regenerable ML / experiment artifacts ---
+mlruns/
+mlflow.db
+mlflow.db-*
+# Only the LEGACY root-level pickles are excluded. models/v2/ holds the v2
+# serving artifacts (.joblib) the API loads at startup, and must stay in the
+# image.
+/*.pkl
+
+# --- Uploaded medical reports and other user data ---
+data/
+/data/
+uploads/
+/uploads/
+/storage/
+
+# --- LangGraph / LangSmith local traces ---
+.langsmith/
+.langchain/
+.langgraph/
+
+# --- Docs and misc ---
+docs/
+evals/
+tests/
+*.md
+!README.md
+dist/
+build/

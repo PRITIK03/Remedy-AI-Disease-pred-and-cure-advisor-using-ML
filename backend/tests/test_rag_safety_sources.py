@@ -21,7 +21,6 @@ from backend.app.rag.safety import (  # noqa: E402
 )
 from backend.app.rag.sources import ManifestError, load_manifest  # noqa: E402
 
-
 # --------------------------------------------------------------------- #
 # Safety screening
 # --------------------------------------------------------------------- #
@@ -117,7 +116,6 @@ class TestSourceManifest:
 class TestLLMClientValidation:
     def _client(self):
         from backend.app.llm.client import OpenAICompatibleLLM
-        from backend.app.rag.schemas import HealthGuidanceResponse
 
         return OpenAICompatibleLLM(
             api_base="https://fake.local/v1",

@@ -135,6 +135,12 @@ def create_app() -> FastAPI:
         )
         response.headers["X-Request-ID"] = request_id
 
+        # --- Telemetry status (Phase 9) ------------------------------------- #
+        # Low-cardinality operational signal only: HTTP status class.
+        from backend.app.telemetry import current_span_status
+
+        current_span_status(response.status_code)
+
         # --- Security headers (Phase 6) ------------------------------------ #
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
@@ -164,6 +170,17 @@ def create_app() -> FastAPI:
             raise RuntimeError(
                 "COOKIE_SECURE must be true when APP_ENV=production"
             )
+
+    # --- OpenTelemetry (Phase 9) ---------------------------------------------- #
+    # Operational request telemetry only; no medical or user data is ever
+    # attached to spans. No-op unless OTEL_ENABLED + an OTLP endpoint are set.
+    from backend.app.telemetry import configure_telemetry
+
+    configure_telemetry(app)
+
+    # --- Non-fatal capability warnings (logged, never printed) --------------- #
+    for warning in settings.validate_runtime_services():
+        logger.warning("startup: %s", warning)
 
     # --- Routers -------------------------------------------------------------- #
     # Health/readiness at the ROOT (operational endpoints, not business APIs).

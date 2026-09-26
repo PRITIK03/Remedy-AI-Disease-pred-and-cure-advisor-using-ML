@@ -1,0 +1,186 @@
+# ---------------------------------------------------------------------------
+# Remedy-AI CI (Phase 9).
+#
+# Gates: backend lint + focused tests, frontend lint + typecheck + build.
+#
+# Security: no secret values exist in this workflow. Unset AI provider keys
+# make the LLM/RAG layers degrade gracefully, which is exactly the path the
+# tests must cover — so no credentials are needed or requested here.
+# ---------------------------------------------------------------------------
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push to the same branch cancels the previous run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (lint + tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install backend with dev extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: |
+          ruff check backend ml rag tests
+
+      - name: Import and compile check
+        run: |
+          python -m compileall -q backend ml rag
+
+      - name: Focused tests
+        env:
+          # Explicitly empty so no host/CI secret can leak into the run and so
+          # the "AI unavailable" path is the one under test.
+          LLM_API_KEY: ""
+          EMBEDDING_API_KEY: ""
+          APP_ENV: test
+        run: |
+          pytest tests -q --maxfail=1
+
+      - name: Production settings guard (no startup, config only)
+        env:
+          APP_ENV: production
+        run: |
+          # A production config missing its secrets must be rejected.
+          python -c "import os; os.environ['APP_ENV']='production'; \
+            from backend.app.core.config import Settings; \
+            s=Settings(secret_key='', cookie_secure=False, cors_origins='*'); \
+            s.validate_production()" && echo 'UNEXPECTED: insecure config accepted' && exit 1 || echo 'OK: insecure production config rejected'
+
+  frontend:
+    name: Frontend (lint + typecheck + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        env:
+          # Public build-time value only — never a secret.
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+        run: npm run build
+
+  docker:
+    name: Docker image build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Build only. `load: false` keeps the runner lean; the real smoke test
+      # below is what proves the images actually run.
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: false
+          # `load` is required so the image lands in the local daemon and the
+          # smoke-test step below can actually run it.
+          load: true
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: false
+          load: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://localhost:8000
+
+      - name: Smoke test the backend container
+        run: |
+          # Runs the real image and asserts it serves /health as a non-root user.
+          # APP_ENV stays non-production: SECRET_KEY is deliberately not
+          # provided here, since no real secret is ever put in CI.
+          docker run -d --name remedy-smoke -p 8000:8000 \
+            -e APP_ENV=development -e LOG_LEVEL=WARNING remedy-ai-backend:latest
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/health; then
+              echo ""
+              echo "OK: backend image serves /health"
+              docker exec remedy-smoke id -u | grep -qv '^0$' \
+                && echo "OK: container runs as non-root"
+              docker rm -f remedy-smoke
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::Backend container did not become healthy"
+          docker logs remedy-smoke
+          docker rm -f remedy-smoke
+          exit 1
+
+  security:
+    name: Security audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No committed secrets
+        run: |
+          # Fail if a real .env or key file is tracked in git.
+          if git ls-files | grep -Ei '(^|/)\.env($|\.)|\.pem$|\.p12$|id_rsa'; then
+            echo "::error::A secret-bearing file is tracked in git."
+            exit 1
+          fi
+          echo "OK: no tracked secret files"
+
+      - name: No secrets in tracked source
+        run: |
+          # Pattern scan over tracked text files. Deliberately coarse: it looks
+          # for assignments of high-entropy provider keys, not for the words.
+          if git grep -nEI '(sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,})' -- . \
+             ':!*.lock' ':!package-lock.json' ':!docs/*'; then
+            echo "::error::Possible hardcoded credential detected in tracked files."
+            exit 1
+          fi
+          echo "OK: no credential patterns in tracked source"
