@@ -58,6 +58,20 @@ def run_guidance_workflow(
     """
     from backend.app.agents.graph import build_guidance_graph
 
+    # Pre-flight configuration gate. Without this, an unconfigured deployment
+    # never reaches the LLM node's own check: unconfigured RAG sets rag_error,
+    # and the degraded-RAG review rule routes to human_review first, so the
+    # user saw a misleading 202 "flagged for review" instead of the
+    # documented 503 "guidance not configured". Injected clients (tests /
+    # alternate wiring) bypass the check by design, mirroring the node.
+    if llm_client is None:
+        from backend.app.core.config import get_settings
+
+        if not get_settings().llm_configured:
+            raise GuidanceNotConfiguredError(
+                "LLM provider not configured (set LLM_API_KEY and LLM_MODEL)."
+            )
+
     graph = build_guidance_graph(db, assessment_id, llm_client)
     config = {"configurable": {"thread_id": thread_id_for(assessment_id, user_id)}}
     final: dict[str, Any] = graph.invoke(

@@ -65,6 +65,44 @@ Apply schema migrations after the database is healthy:
 docker compose exec backend alembic upgrade head
 ```
 
+### Startup order (verified live)
+
+1. PostgreSQL (with the pgvector extension available) and Redis start first.
+2. Run `alembic upgrade head` once the database accepts connections.
+3. Start the backend; `/health` should return 200, then `/ready` should
+   report `status: "ready"` (database, Redis, model, storage all `ok`).
+4. Start the frontend (its Compose definition already waits for the backend
+   health check).
+
+Auth is **fail-closed**: with Redis unreachable, register/login return 503, so
+Redis is a hard dependency for any signed-in usage, not an optional cache.
+
+### Live verification status (honest record, 2026-09)
+
+Verified live in a development environment against real PostgreSQL 18 and a
+local Redis server: the full authenticated user journey (register → session →
+assessment → SHAP explanation → guidance gating → synthetic report upload →
+human-confirmed assessment → history → FHIR R4 export), the LangGraph
+PostgreSQL checkpointer (guidance state survives restarts and is no longer
+dropped to in-memory), production-config rejection rules, and the frontend
+production build serving all pages.
+
+**Not yet verified live** (code-complete and covered by tests with fakes, but
+no provider credentials were configured in the verification environment):
+
+- Real embeddings + pgvector retrieval (requires an embedding provider and
+  the `vector` extension; on native Windows PostgreSQL the extension is not
+  installed, so use the `pgvector/pgvector:pg18` image from Compose).
+- Real LLM guidance generation end-to-end.
+- Vision report extraction against a real multimodal provider.
+- S3 storage against a real bucket (configuration is validated and the local
+  backend is verified; the S3 path is exercised by tests with fakes only).
+
+Until provider credentials are configured, guidance requests return an honest
+`503 {"AI guidance is not configured on this server"}` on every risk level —
+the configuration gate fires before the workflow runs, rather than masking
+itself as a human-review hold.
+
 ---
 
 ## 3. Container images

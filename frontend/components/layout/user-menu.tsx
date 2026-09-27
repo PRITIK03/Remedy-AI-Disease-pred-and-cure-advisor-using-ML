@@ -21,8 +21,15 @@ export function UserMenu() {
         <Button asChild variant="ghost" size="sm">
           <Link href="/login">Sign in</Link>
         </Button>
-        <Button asChild size="sm">
+        {/* Register collapses to an icon button below lg to keep the header
+            inside the viewport on narrow laptops (1024px). */}
+        <Button asChild size="sm" className="hidden lg:inline-flex">
           <Link href="/register">Register</Link>
+        </Button>
+        <Button asChild size="icon-sm" className="lg:hidden" aria-label="Create an account">
+          <Link href="/register">
+            <UserRound className="h-4 w-4" aria-hidden="true" />
+          </Link>
         </Button>
       </div>
     );
@@ -31,7 +38,7 @@ export function UserMenu() {
   return (
     <div className="flex items-center gap-2">
       <span
-        className="hidden max-w-[10rem] items-center gap-1.5 truncate rounded-md border border-border px-2.5 py-1.5 text-sm text-muted-foreground sm:inline-flex"
+        className="hidden max-w-[10rem] items-center gap-1.5 truncate rounded-md border border-border px-2.5 py-1.5 text-sm text-muted-foreground lg:inline-flex"
         title={user?.email}
       >
         <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
@@ -45,7 +52,7 @@ export function UserMenu() {
         }}
       >
         <LogOut className="mr-1.5 h-4 w-4" aria-hidden="true" />
-        Sign out
+        <span className="hidden lg:inline">Sign out</span>
       </Button>
     </div>
   );

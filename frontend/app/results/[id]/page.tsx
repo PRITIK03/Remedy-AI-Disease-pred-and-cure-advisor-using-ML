@@ -14,7 +14,6 @@ import {
 import { AiGuidance } from "@/components/results/ai-guidance";
 import { ContributionsList } from "@/components/results/contributions-list";
 import { ProbabilityGauge } from "@/components/results/probability-gauge";
-import { ProbabilityBadge } from "@/components/ui/probability-status";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { Button } from "@/components/ui/button";
 import {
@@ -215,11 +214,6 @@ function ResultsContent({
             <span>model v{assessment.model_version}</span>
           </p>
         </div>
-        <ProbabilityBadge
-          probability={assessment.disease_probability}
-          predictedDisease={highProbability}
-          className="text-sm"
-        />
       </div>
 
       {/* Main result — the gauge is the single visual anchor */}
@@ -297,25 +291,6 @@ function ResultsContent({
 
       {/* AI guidance — lazy, explicit user opt-in (no LLM call on render) */}
       <AiGuidance assessmentId={assessment.id} modelProbability={assessment.disease_probability} />
-
-      {/* Model information */}
-      <Card className="mt-4">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Model Information</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
-          <div>
-            <p className="text-muted-foreground">Model version</p>
-            <p className="font-medium">v{assessment.model_version}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Selected model</p>
-            <p className="font-medium capitalize">
-              {assessment.selected_model.replace(/_/g, " ")}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* About this prediction */}
       <Collapsible className="mt-4">

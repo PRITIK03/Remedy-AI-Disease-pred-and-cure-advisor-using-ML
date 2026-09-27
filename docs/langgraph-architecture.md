@@ -115,11 +115,10 @@ documented demo policy, changeable in one place.
   `AGENTS_CHECKPOINTER=memory` or automatic fallback if the Postgres
   checkpointer cannot be set up. The checkpointer instance is cached
   process-wide (resume requires the same checkpointer across calls).
-- **Thread id**: `guidance:{assessment_id}`. This is acceptable ONLY in the
-  current unauthenticated demo. When authentication/multi-user isolation
-  arrives, thread ids MUST become user-scoped (e.g.
-  `{user_id}:{assessment_id}`) and review decisions must become
-  identity-bearing — tracked for the auth phase.
+- **Thread id**: user-scoped via `thread_id_for(assessment_id, user_id)`
+  (`backend/app/agents/service.py`), so one user can never resume another
+  user's review thread. Reviewer identity/roles (reviewer/admin) remain
+  groundwork for a future review workflow UI.
 - No custom checkpoint database was invented.
 
 ## Failure handling & retries

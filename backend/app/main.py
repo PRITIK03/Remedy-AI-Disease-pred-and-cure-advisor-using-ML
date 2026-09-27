@@ -79,6 +79,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await app.state.redis_service.close()
     if app.state.db_engine is not None:
         app.state.db_engine.dispose()
+    from backend.app.agents.graph import close_checkpointer
+
+    close_checkpointer()
     logger.info("Remedy-AI API shut down cleanly")
 
 

@@ -430,6 +430,7 @@ export function DashboardOverview() {
                   <ServiceRow label="Database" value={ready.data.services.database} />
                   <ServiceRow label="Redis" value={ready.data.services.redis} />
                   <ServiceRow label="Model" value={ready.data.services.model} />
+                  <ServiceRow label="Storage" value={ready.data.services.storage} />
                 </div>
               ) : (
                 <div className="space-y-2.5" aria-busy="true">

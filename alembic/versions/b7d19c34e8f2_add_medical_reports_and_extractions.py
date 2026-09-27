@@ -10,16 +10,17 @@ Phase 7:
 - assessments: add source ("manual" | "report") and report_id foreign key.
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "b7d19c34e8f2"
-down_revision: Union[str, None] = "c3f8a1d20b47"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "c3f8a1d20b47"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 

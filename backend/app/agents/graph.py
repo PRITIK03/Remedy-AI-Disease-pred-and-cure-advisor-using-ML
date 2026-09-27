@@ -135,6 +135,21 @@ def build_guidance_graph(db, assessment_id: str, llm_client=None):
 _checkpointer_instance = None
 
 
+def close_checkpointer() -> None:
+    """Release the process-owned connection pool at app shutdown (best-effort)."""
+    global _checkpointer_instance
+    instance = _checkpointer_instance
+    _checkpointer_instance = None
+    pool = getattr(instance, "conn", None)
+    close = getattr(pool, "close", None)
+    if callable(close):
+        try:
+            close()
+            logger.info("LangGraph checkpointer pool closed")
+        except Exception:  # noqa: BLE001 - shutdown must never raise
+            logger.warning("LangGraph checkpointer pool close failed", exc_info=True)
+
+
 def _make_checkpointer():
     """PostgreSQL-backed checkpointer for the real app path; in-memory only
     as a local/dev/test fallback when the DB package/connection is missing.
@@ -160,6 +175,7 @@ def _make_checkpointer():
         return _checkpointer_instance
 
     try:
+        import psycopg_pool
         from langgraph.checkpoint.postgres import PostgresSaver
 
         from backend.app.core.config import get_settings
@@ -167,9 +183,22 @@ def _make_checkpointer():
         dsn = get_settings().database_url.replace(
             "postgresql+psycopg://", "postgresql://", 1
         )
-        checkpointer = PostgresSaver.from_conn_string(dsn)
-        # PostgresSaver.from_conn_string returns a context-managed sync
-        # connection wrapper; setup() creates its tables (idempotent).
+        # PostgresSaver.from_conn_string() returns a CONTEXT-MANAGED
+        # connection wrapper; calling .setup() on it directly always raised
+        # and silently degraded every deployment to the in-memory fallback.
+        # The supported production shape is a dedicated autocommit
+        # connection pool owned by the process, wrapped by PostgresSaver
+        # (which takes pool.connection() per checkpoint operation).
+        pool = psycopg_pool.ConnectionPool(
+            dsn,
+            min_size=1,
+            max_size=3,
+            kwargs={"autocommit": True},
+        )
+        pool.open(wait=True, timeout=10)
+        checkpointer = PostgresSaver(pool)
+        # Idempotently create the checkpoint tables; this also proves the
+        # database is actually reachable before the instance is cached.
         checkpointer.setup()
         _checkpointer_instance = checkpointer
         return _checkpointer_instance

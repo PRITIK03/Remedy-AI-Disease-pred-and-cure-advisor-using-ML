@@ -11,16 +11,17 @@ pgvector-enabled container image. This migration creates the extension
 idempotently and adds knowledge_documents / knowledge_chunks.
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+
+import sqlalchemy as sa
 
 from alembic import op
-import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "a4f2c9d17e55"
-down_revision: Union[str, None] = "b7d19c34e8f2"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "b7d19c34e8f2"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 # Default dimension for the initial deployment. Must match EMBEDDING_DIMENSION
 # (and the chosen embedding model's output size). Changing the embedding model

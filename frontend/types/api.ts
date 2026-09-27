@@ -84,6 +84,8 @@ export interface ReadinessResponse {
     database: string;
     redis: string;
     model: string;
+    /** Phase 9: report storage backend health ("ok" | "unavailable"). */
+    storage: string;
   };
 }
 

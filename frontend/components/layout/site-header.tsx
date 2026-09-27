@@ -125,6 +125,7 @@ export function SiteHeader() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
+                aria-label={item.label}
                 className={cn(
                   "relative flex items-center gap-1.5 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                   active
@@ -133,7 +134,9 @@ export function SiteHeader() {
                 )}
               >
                 <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                {item.label}
+                {/* Icons-only between md and lg keeps the header within the
+                    viewport at 768px; aria-label preserves the name. */}
+                <span className="hidden lg:inline">{item.label}</span>
                 {active && (
                   <span
                     className="absolute inset-x-2.5 -bottom-[9px] h-0.5 rounded-full bg-primary"
