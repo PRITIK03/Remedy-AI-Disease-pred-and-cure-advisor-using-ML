@@ -15,6 +15,13 @@ export function formatPercentPrecise(p: number): string {
   return `${(p * 100).toFixed(1)}%`;
 }
 
+/** Bytes -> compact human string, e.g. 2048 -> "2.0 KB". */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 /** ISO timestamp -> locale string (safe for SSR hydration when client-only). */
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);

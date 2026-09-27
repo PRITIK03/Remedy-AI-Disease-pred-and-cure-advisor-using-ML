@@ -63,13 +63,17 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-16">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <Activity className="h-8 w-8 text-primary" aria-hidden="true" />
-        <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
-        <p className="text-sm text-muted-foreground">
-          Your assessments stay private to your account.
-        </p>
+    <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-14 animate-page-enter md:py-20">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+          <Activity className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div>
+          <h1 className="text-balance text-2xl font-semibold tracking-tight">Create your account</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your assessments stay private to your account.
+          </p>
+        </div>
       </div>
 
       <Card>
@@ -100,6 +104,7 @@ export default function RegisterPage() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
                 aria-invalid={!!fieldErrors.name}
+                className="h-10"
               />
               {fieldErrors.name && (
                 <p className="text-sm text-destructive">{fieldErrors.name}</p>
@@ -116,6 +121,7 @@ export default function RegisterPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 aria-invalid={!!fieldErrors.email}
+                className="h-10"
               />
               {fieldErrors.email && (
                 <p className="text-sm text-destructive">{fieldErrors.email}</p>
@@ -132,6 +138,7 @@ export default function RegisterPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 10 characters"
                 aria-invalid={!!fieldErrors.password}
+                className="h-10"
               />
               {fieldErrors.password && (
                 <p className="text-sm text-destructive">{fieldErrors.password}</p>
@@ -148,6 +155,7 @@ export default function RegisterPage() {
                 onChange={(e) => setConfirm(e.target.value)}
                 placeholder="Repeat your password"
                 aria-invalid={!!fieldErrors.confirm}
+                className="h-10"
               />
               {fieldErrors.confirm && (
                 <p className="text-sm text-destructive">{fieldErrors.confirm}</p>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { ProbabilityBadge } from "@/components/ui/probability-status";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDateTime, formatPercentPrecise } from "@/lib/utils";
 import type { AssessmentResponse } from "@/types/api";
@@ -12,25 +12,29 @@ export function HistoryCards({ items }: { items: AssessmentResponse[] }) {
   return (
     <div className="space-y-3 md:hidden">
       {items.map((item) => (
-        <Card key={item.id} className="transition-colors hover:bg-accent/40">
+        <Card key={item.id} className="transition-colors hover:bg-accent/40 motion-reduce:transition-none">
           <CardContent className="p-0">
             <Link
               href={`/results/${item.id}`}
               className="flex items-center justify-between gap-3 p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
-              <div className="space-y-1">
-                <p className="font-medium tabular-nums">
-                  {formatPercentPrecise(item.disease_probability)}{" "}
-                  <span className="text-xs font-normal text-muted-foreground">
+              <div className="min-w-0 space-y-1.5">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-semibold tabular-nums">
+                    {formatPercentPrecise(item.disease_probability)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
                     disease probability
                   </span>
+                </div>
+                <ProbabilityBadge
+                  probability={item.disease_probability}
+                  predictedDisease={item.predicted_disease}
+                />
+                <p className="truncate text-xs text-muted-foreground">
+                  {formatDateTime(item.created_at)} ·{" "}
+                  {item.source === "report" ? "Report" : "Manual"} · v{item.model_version}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDateTime(item.created_at)} · v{item.model_version}
-                </p>
-                <Badge variant={item.predicted_disease ? "outline" : "secondary"} className="text-xs">
-                  {item.predicted_disease ? "Higher probability" : "Lower probability"}
-                </Badge>
               </div>
               <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             </Link>

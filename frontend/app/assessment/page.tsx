@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Info } from "lucide-react";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { AssessmentForm } from "@/components/assessment/assessment-form";
 import { RequireAuth } from "@/lib/use-auth";
 
@@ -11,12 +12,11 @@ export const metadata: Metadata = {
 export default function AssessmentPage() {
   return (
     <RequireAuth>
-      <div className="mx-auto max-w-2xl px-4 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight">New Assessment</h1>
-        <p className="mt-1 text-muted-foreground">
-          Provide the 13 inputs the model was trained on. You can find them on a
-          routine check-up report.
-        </p>
+      <div className="mx-auto max-w-2xl px-4 py-8 md:py-10">
+        <PageHeader
+          title="New Assessment"
+          description="Provide the 13 inputs the model was trained on. You can find them on a routine check-up report."
+        />
 
         <div
           role="note"
@@ -30,7 +30,7 @@ export default function AssessmentPage() {
           </p>
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 animate-page-enter">
           <AssessmentForm />
         </div>
       </div>

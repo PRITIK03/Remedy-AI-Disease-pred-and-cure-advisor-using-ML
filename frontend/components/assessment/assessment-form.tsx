@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AlertCircle, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Check, ClipboardCheck, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,7 @@ import {
   THAL_OPTIONS,
   VESSEL_OPTIONS,
   YES_NO_OPTIONS,
+  prettyFeatureName,
 } from "@/lib/labels";
 import { validateAssessment, type FieldErrors } from "@/lib/validation";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ const EMPTY_FORM: FormState = {
 
 interface StepDefinition {
   title: string;
+  shortTitle: string;
   description: string;
   fields: string[];
   render: (props: FieldProps) => React.ReactNode;
@@ -53,6 +55,7 @@ interface FieldProps {
 const STEPS: StepDefinition[] = [
   {
     title: "Basic Information",
+    shortTitle: "Basics",
     description: "Who is this assessment for?",
     fields: ["age", "sex"],
     render: ({ values, errors, setValue }) => (
@@ -80,6 +83,7 @@ const STEPS: StepDefinition[] = [
   },
   {
     title: "Symptoms & Clinical Observations",
+    shortTitle: "Symptoms",
     description: "Chest pain and exercise responses.",
     fields: ["cp", "exang"],
     render: ({ values, errors, setValue }) => (
@@ -107,6 +111,7 @@ const STEPS: StepDefinition[] = [
   },
   {
     title: "Measurements & Diagnostic Indicators",
+    shortTitle: "Measurements",
     description: "Routine measurements from a check-up or stress test.",
     fields: ["trestbps", "chol", "thalach", "oldpeak", "fbs", "restecg", "slope", "ca", "thal"],
     render: ({ values, errors, setValue }) => (
@@ -155,7 +160,7 @@ const STEPS: StepDefinition[] = [
             max={10}
           />
         </div>
-        <div className="mt-5 grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-2">
           <RadioField
             name="fbs"
             label="Fasting blood sugar above 120 mg/dl"
@@ -202,14 +207,18 @@ const STEPS: StepDefinition[] = [
   },
 ];
 
-const TOTAL_STEPS = STEPS.length;
+const TOTAL_STEPS = STEPS.length; // data steps; a final review step follows
+const REVIEW_STEP = STEPS.length;
+
+/** Real request phases — no fake progress percentages. */
+type SubmitPhase = "validating" | "analyzing" | "preparing" | null;
 
 export function AssessmentForm() {
   const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [values, setValues] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [submitting, setSubmitting] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState<SubmitPhase>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const step = STEPS[stepIndex];
@@ -217,6 +226,7 @@ export function AssessmentForm() {
     () => Math.round(((stepIndex + 1) / TOTAL_STEPS) * 100),
     [stepIndex]
   );
+  const submitting = submitPhase !== null;
 
   const setValue = (name: string, value: string) => {
     setValues((prev) => ({ ...prev, [name]: value }));
@@ -248,12 +258,29 @@ export function AssessmentForm() {
 
   const goNext = () => {
     if (!validateStep(stepIndex)) return;
-    setStepIndex((i) => Math.min(i + 1, TOTAL_STEPS - 1));
+    setStepIndex((i) => Math.min(i + 1, REVIEW_STEP));
   };
 
   const goBack = () => setStepIndex((i) => Math.max(i - 1, 0));
 
+  /** Readable value for a field, or null when empty (for the review step). */
+  const reviewValue = (name: string): string | null => {
+    const raw = values[name] ?? "";
+    if (raw === "") return null;
+    if (name === "sex") return SEX_OPTIONS.find((o) => String(o.value) === raw)?.label ?? raw;
+    if (name === "cp") return CHEST_PAIN_OPTIONS.find((o) => String(o.value) === raw)?.label ?? raw;
+    if (name === "fbs" || name === "exang")
+      return YES_NO_OPTIONS.find((o) => String(o.value) === raw)?.label ?? raw;
+    if (name === "restecg") return REST_ECG_OPTIONS.find((o) => String(o.value) === raw)?.label ?? raw;
+    if (name === "slope") return SLOPE_OPTIONS.find((o) => String(o.value) === raw)?.label ?? raw;
+    if (name === "ca") return VESSEL_OPTIONS.find((o) => String(o.value) === raw)?.label ?? raw;
+    if (name === "thal") return THAL_OPTIONS.find((o) => String(o.value) === raw)?.label ?? raw;
+    return raw;
+  };
+
   const handleSubmit = async () => {
+    setSubmitPhase("validating");
+    setSubmitError(null);
     // Full validation across all steps before submission.
     const result = validateAssessment(values);
     if (!result.ok) {
@@ -265,12 +292,13 @@ export function AssessmentForm() {
         })
       );
       if (firstErrorStep >= 0) setStepIndex(firstErrorStep);
+      setSubmitPhase(null);
       return;
     }
-    setSubmitting(true);
-    setSubmitError(null);
     try {
+      setSubmitPhase("analyzing");
       const created = await api.createAssessment(result.data);
+      setSubmitPhase("preparing");
       toast.success("Assessment created");
       router.push(`/results/${created.id}`);
     } catch (error) {
@@ -280,49 +308,165 @@ export function AssessmentForm() {
           : "Something went wrong. Please try again.";
       setSubmitError(message);
       toast.error(message);
-    } finally {
-      setSubmitting(false);
+      setSubmitPhase(null);
     }
   };
 
   const fieldProps: FieldProps = { values, errors, setValue };
 
+  const submitLabel =
+    submitPhase === "validating"
+      ? "Validating…"
+      : submitPhase === "analyzing"
+        ? "Analyzing…"
+        : submitPhase === "preparing"
+          ? "Preparing result…"
+          : "Analyze Assessment";
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardDescription>
-            Step {stepIndex + 1} of {TOTAL_STEPS}
-          </CardDescription>
-          <span className="text-xs text-muted-foreground" aria-hidden="true">
-            {"█".repeat(progress / 10)}
-            {"░".repeat(10 - progress / 10)}
-          </span>
-        </div>
-        <Progress value={progress} className="mt-1 h-1.5" aria-hidden="true" />
-        <CardTitle className="mt-3 text-xl">{step.title}</CardTitle>
-        <CardDescription>{step.description}</CardDescription>
+        {/* Step indicator */}
+        <ol
+          className="flex items-center gap-2"
+          aria-label={`Step ${stepIndex + 1} of ${TOTAL_STEPS + 1}`}
+        >
+          {STEPS.map((s, i) => {
+            const isDone = i < stepIndex;
+            const isCurrent = i === stepIndex;
+            return (
+              <li key={s.shortTitle} className="flex min-w-0 items-center gap-2">
+                <span
+                  aria-current={isCurrent ? "step" : undefined}
+                  className={cn(
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium transition-colors",
+                    isDone && "border-primary bg-primary text-primary-foreground",
+                    isCurrent && "border-primary text-primary",
+                    !isDone && !isCurrent && "border-border text-muted-foreground"
+                  )}
+                >
+                  {isDone ? (
+                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                  ) : (
+                    i + 1
+                  )}
+                </span>
+                <span
+                  className={cn(
+                    "hidden text-sm sm:inline",
+                    isCurrent ? "font-medium text-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  {s.shortTitle}
+                </span>
+                {i < TOTAL_STEPS - 1 && (
+                  <span
+                    className={cn(
+                      "h-px w-4 shrink-0 sm:w-6",
+                      isDone ? "bg-primary" : "bg-border"
+                    )}
+                    aria-hidden="true"
+                  />
+                )}
+              </li>
+            );
+          })}
+          {/* Review chip terminates the indicator */}
+          <li className="flex min-w-0 items-center gap-2">
+            <span
+              aria-current={stepIndex === REVIEW_STEP ? "step" : undefined}
+              className={cn(
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium transition-colors",
+                stepIndex === REVIEW_STEP
+                  ? "border-primary text-primary"
+                  : "border-border text-muted-foreground"
+              )}
+            >
+              <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
+            </span>
+            <span
+              className={cn(
+                "hidden text-sm sm:inline",
+                stepIndex === REVIEW_STEP
+                  ? "font-medium text-foreground"
+                  : "text-muted-foreground"
+              )}
+            >
+              Review
+            </span>
+          </li>
+        </ol>
+        <Progress
+          value={stepIndex === REVIEW_STEP ? 100 : progress}
+          className="mt-4 h-1.5"
+          aria-hidden="true"
+        />
+        <CardTitle className="mt-3 text-xl">
+          {stepIndex === REVIEW_STEP ? "Review & Analyze" : step.title}
+        </CardTitle>
+        <CardDescription>
+          {stepIndex === REVIEW_STEP
+            ? "All values below are ready to send to the model."
+            : step.description}
+        </CardDescription>
       </CardHeader>
 
       <CardContent>
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (stepIndex < TOTAL_STEPS - 1) goNext();
+            if (stepIndex < REVIEW_STEP) goNext();
             else void handleSubmit();
           }}
           noValidate
         >
           <fieldset disabled={submitting} className="space-y-5">
             <legend className="sr-only">{step.title}</legend>
-            <div
-              className={cn(
-                "grid gap-5",
-                step.fields.length > 2 && "sm:grid-cols-1"
-              )}
-            >
-              {step.render(fieldProps)}
-            </div>
+            {stepIndex === REVIEW_STEP ? (
+              /* Review step: readable summary of the entered values. */
+              <div aria-busy={submitting} className="animate-page-enter">
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Check everything before running the model — use Back to edit
+                  any value.
+                </p>
+                <dl className="grid gap-x-6 gap-y-2 rounded-lg border border-border bg-muted/30 p-4 sm:grid-cols-2">
+                  {STEPS.flatMap((s) => s.fields).map((field) => {
+                    const label = prettyFeatureName(`numeric__${field}`)
+                      .replace(/ \(male\)$/, "")
+                      .replace("High fasting blood sugar", "Fasting blood sugar > 120 mg/dl")
+                      .replace("Exercise-induced angina", "Exercise-induced angina")
+                      .replace("Maximum heart rate", "Maximum heart rate achieved");
+                    const value = reviewValue(field);
+                    return (
+                      <div
+                        key={field}
+                        className="flex items-baseline justify-between gap-3 border-b border-border/60 py-1.5 last:border-0 sm:border-0"
+                      >
+                        <dt className="text-sm text-muted-foreground">{label}</dt>
+                        <dd
+                          className={cn(
+                            "text-sm font-medium tabular-nums",
+                            value === null && "text-destructive"
+                          )}
+                        >
+                          {value ?? "Missing"}
+                        </dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+              </div>
+            ) : (
+              <div
+                aria-busy={submitting}
+                className={cn(
+                  "grid gap-5 transition-opacity",
+                  submitting && "pointer-events-none opacity-60"
+                )}
+              >
+                {step.render(fieldProps)}
+              </div>
+            )}
 
             {submitError && (
               <div
@@ -334,30 +478,35 @@ export function AssessmentForm() {
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-3 pt-2">
+            <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={goBack}
                 disabled={stepIndex === 0 || submitting}
               >
-                <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" /> Back
+                <ArrowLeft className="size-4" aria-hidden="true" /> Back
               </Button>
 
-              {stepIndex < TOTAL_STEPS - 1 ? (
+              {stepIndex < REVIEW_STEP ? (
                 <Button type="submit">
-                  Continue <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+                  {stepIndex === REVIEW_STEP - 1 ? "Review" : "Continue"}{" "}
+                  <ArrowRight className="size-4" aria-hidden="true" />
                 </Button>
               ) : (
                 <Button type="submit" disabled={submitting}>
                   {submitting && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   )}
-                  {submitting ? "Analyzing assessment…" : "Analyze Assessment"}
+                  {submitting ? submitLabel : "Analyze Assessment"}
                 </Button>
               )}
             </div>
           </fieldset>
+          {/* Screen-reader announcement of the current async phase. */}
+          <p className="sr-only" role="status" aria-live="polite">
+            {submitting ? submitLabel : ""}
+          </p>
         </form>
       </CardContent>
     </Card>

@@ -14,7 +14,8 @@ import {
 import { AiGuidance } from "@/components/results/ai-guidance";
 import { ContributionsList } from "@/components/results/contributions-list";
 import { ProbabilityGauge } from "@/components/results/probability-gauge";
-import { Badge } from "@/components/ui/badge";
+import { ProbabilityBadge } from "@/components/ui/probability-status";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -32,7 +33,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { api, ApiError, apiBaseUrl } from "@/lib/api";
 import { RequireAuth } from "@/lib/use-auth";
-import { formatDateTime, formatPercentPrecise } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import type { AssessmentResponse, ExplanationResponse } from "@/types/api";
 
 export default function ResultsPage({
@@ -61,21 +62,8 @@ function ResultsContent({
   const [explError, setExplError] = useState<string | null>(null);
   const [explOpen, setExplOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      const data = await api.getAssessment(id);
-      setAssessment(data);
-      setError(null);
-    } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "Failed to load the assessment."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
   const loadExplanation = useCallback(async () => {
+    setExplLoading(true);
     try {
       const data = await api.getExplanation(id);
       setExplanation(data);
@@ -92,13 +80,24 @@ function ResultsContent({
   }, [id]);
 
   const retryExplanation = () => {
-    setExplLoading(true);
     void loadExplanation();
   };
 
   const retry = () => {
     setLoading(true);
-    void load();
+    void (async () => {
+      try {
+        const data = await api.getAssessment(id);
+        setAssessment(data);
+        setError(null);
+      } catch (err) {
+        setError(
+          err instanceof ApiError ? err.message : "Failed to load the assessment."
+        );
+      } finally {
+        setLoading(false);
+      }
+    })();
   };
 
   useEffect(() => {
@@ -125,8 +124,9 @@ function ResultsContent({
     };
   }, [id]);
 
+  // Lazy-load contributions the first time the section is opened.
   useEffect(() => {
-    if (!explOpen || explanation) return;
+    if (!explOpen || explanation || explError) return;
     let cancelled = false;
     void (async () => {
       setExplLoading(true);
@@ -151,7 +151,7 @@ function ResultsContent({
     return () => {
       cancelled = true;
     };
-  }, [explOpen, explanation, id]);
+  }, [explOpen, explanation, explError, id]);
 
   if (loading) {
     return (
@@ -175,7 +175,7 @@ function ResultsContent({
           </CardHeader>
           <CardContent className="flex gap-3">
             <Button onClick={retry} variant="outline">
-              <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" /> Retry
+              <RefreshCw className="size-4" aria-hidden="true" /> Retry
             </Button>
             <Button asChild variant="ghost">
               <Link href="/history">Go to History</Link>
@@ -187,63 +187,66 @@ function ResultsContent({
   }
 
   const highProbability = assessment.predicted_disease;
+  const sourceLabel =
+    assessment.source === "report" ? "From uploaded report" : "Manual entry";
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Model Assessment</h1>
-          <p className="text-sm text-muted-foreground">
-            {formatDateTime(assessment.created_at)}
+    <div className="mx-auto max-w-3xl px-4 py-8 animate-page-enter md:py-10">
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/" },
+          { label: "History", href: "/history" },
+          { label: `Assessment ${assessment.id.slice(0, 8)}` },
+        ]}
+        className="mb-4"
+      />
+
+      {/* Header + clean metadata row */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-balance text-2xl font-semibold tracking-tight">
+            Assessment Result
+          </h1>
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
+            <span>{formatDateTime(assessment.created_at)}</span>
+            <span aria-hidden="true" className="opacity-50">·</span>
+            <span>{sourceLabel}</span>
+            <span aria-hidden="true" className="opacity-50">·</span>
+            <span>model v{assessment.model_version}</span>
           </p>
         </div>
-        <Badge variant={highProbability ? "outline" : "secondary"} className="text-sm">
-          {highProbability
-            ? "Higher model-estimated probability of disease"
-            : "Lower model-estimated probability of disease"}
-        </Badge>
+        <ProbabilityBadge
+          probability={assessment.disease_probability}
+          predictedDisease={highProbability}
+          className="text-sm"
+        />
       </div>
 
-      {/* Main result */}
+      {/* Main result — the gauge is the single visual anchor */}
       <Card className="mt-6">
-        <CardContent className="flex flex-col items-center gap-6 py-8 sm:flex-row sm:justify-around">
+        <CardContent className="flex flex-col items-center gap-6 py-8 sm:flex-row sm:justify-center sm:gap-12 sm:py-10">
           <ProbabilityGauge probability={assessment.disease_probability} />
-          <div className="space-y-1 text-center sm:text-left">
-            <p className="text-sm text-muted-foreground">
-              Model-estimated disease probability
+          <div className="max-w-xs space-y-2 text-center sm:text-left">
+            <p className="text-sm font-medium">Model-estimated disease probability</p>
+            <p
+              className={cn(
+                "text-sm text-pretty",
+                highProbability
+                  ? "text-rose-700 dark:text-rose-400"
+                  : "text-emerald-700 dark:text-emerald-400"
+              )}
+            >
+              {highProbability
+                ? "The model estimates a higher probability of disease."
+                : "The model estimates a lower probability of disease."}
             </p>
-            <p className="text-4xl font-semibold tabular-nums">
-              {formatPercentPrecise(assessment.disease_probability)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              probability_label: {assessment.probability_label}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Model information */}
-      <Card className="mt-4">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Model Information</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
-          <div>
-            <p className="text-muted-foreground">Model version</p>
-            <p className="font-medium">{assessment.model_version}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Selected model</p>
-            <p className="font-medium capitalize">
-              {assessment.selected_model.replace(/_/g, " ")}
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              A probability, not a yes/no answer. This estimate is not a
+              diagnosis — see the notes below for context and limitations.
             </p>
           </div>
         </CardContent>
       </Card>
-
-      {/* AI guidance — lazy, explicit user opt-in (no LLM call on render) */}
-      <AiGuidance assessmentId={assessment.id} modelProbability={assessment.disease_probability} />
 
       {/* Feature contributions */}
       <Collapsible open={explOpen} onOpenChange={setExplOpen} className="mt-4">
@@ -251,12 +254,20 @@ function ResultsContent({
           <CollapsibleTrigger asChild>
             <Button
               variant="ghost"
-              className="flex w-full items-center justify-between px-6 py-4"
+              className="flex w-full items-center justify-between gap-2 px-6 py-4"
               aria-expanded={explOpen}
             >
-              <span className="font-semibold">What influenced this model output?</span>
+              <span className="flex items-baseline gap-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Interpretation
+                </span>
+                <span className="font-semibold">What influenced the model?</span>
+              </span>
               <ChevronDown
-                className={`h-4 w-4 transition-transform ${explOpen ? "rotate-180" : ""}`}
+                className={cn(
+                  "h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none",
+                  explOpen && "rotate-180"
+                )}
                 aria-hidden="true"
               />
             </Button>
@@ -264,9 +275,9 @@ function ResultsContent({
           <CollapsibleContent>
             <CardContent className="pt-0">
               <p className="mb-4 text-xs text-muted-foreground">
-                Model feature contributions — how much each input pushed the
-                model&apos;s estimate up (amber) or down (green). These are
-                model contributions, <strong>not causes of disease</strong>.
+                Feature contributions — how much each input pushed the model&apos;s
+                estimate up (amber) or down (green). These are model
+                contributions, <strong>not causes of disease</strong>.
               </p>
               <ContributionsList
                 contributions={explanation?.contributions ?? null}
@@ -284,16 +295,38 @@ function ResultsContent({
         </Card>
       </Collapsible>
 
+      {/* AI guidance — lazy, explicit user opt-in (no LLM call on render) */}
+      <AiGuidance assessmentId={assessment.id} modelProbability={assessment.disease_probability} />
+
+      {/* Model information */}
+      <Card className="mt-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Model Information</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <p className="text-muted-foreground">Model version</p>
+            <p className="font-medium">v{assessment.model_version}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Selected model</p>
+            <p className="font-medium capitalize">
+              {assessment.selected_model.replace(/_/g, " ")}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* About this prediction */}
       <Collapsible className="mt-4">
         <Card>
           <CollapsibleTrigger asChild>
             <Button
               variant="ghost"
-              className="flex w-full items-center justify-between px-6 py-4"
+              className="flex w-full items-center justify-between gap-2 px-6 py-4"
             >
               <span className="font-semibold">About this prediction</span>
-              <ChevronDown className="h-4 w-4" aria-hidden="true" />
+              <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent>
@@ -318,13 +351,13 @@ function ResultsContent({
         </Card>
       </Collapsible>
 
-      <div className="mt-6 flex gap-3">
-        <Button asChild variant="outline">
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Button asChild>
           <Link href="/assessment">
-            <ClipboardList className="mr-2 h-4 w-4" aria-hidden="true" /> New Assessment
+            <ClipboardList className="size-4" aria-hidden="true" /> New Assessment
           </Link>
         </Button>
-        <Button asChild variant="ghost">
+        <Button asChild variant="outline">
           <Link href="/history">View History</Link>
         </Button>
       </div>

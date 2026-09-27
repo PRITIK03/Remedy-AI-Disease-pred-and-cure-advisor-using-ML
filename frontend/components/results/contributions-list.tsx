@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { prettyFeatureName } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,17 @@ export function ContributionsList({
   error,
   onRetry,
 }: ContributionsListProps) {
+  // Largest influence first — reads as a ranking.
+  const sorted = useMemo(
+    () =>
+      contributions
+        ? [...contributions].sort(
+            (a, b) => Math.abs(b.shap_value) - Math.abs(a.shap_value)
+          )
+        : null,
+    [contributions]
+  );
+
   if (loading) {
     return (
       <div className="space-y-3" aria-busy="true" aria-label="Loading feature contributions">
@@ -45,7 +57,7 @@ export function ContributionsList({
     );
   }
 
-  if (!contributions || contributions.length === 0) {
+  if (!sorted || sorted.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
         Feature contributions are not available for this assessment.
@@ -53,21 +65,23 @@ export function ContributionsList({
     );
   }
 
-  const maxAbs = Math.max(...contributions.map((c) => Math.abs(c.shap_value)), 1e-9);
+  const maxAbs = Math.max(...sorted.map((c) => Math.abs(c.shap_value)), 1e-9);
 
   return (
     <ul className="space-y-3">
-      {contributions.map((c) => {
+      {sorted.map((c, index) => {
         const widthPct = (Math.abs(c.shap_value) / maxAbs) * 100;
         const pushesUp = c.shap_value > 0;
         return (
           <li key={c.feature} className="space-y-1">
             <div className="flex items-baseline justify-between gap-2 text-sm">
-              <span>{prettyFeatureName(c.feature)}</span>
+              <span className="min-w-0 truncate">{prettyFeatureName(c.feature)}</span>
               <span
                 className={cn(
-                  "tabular-nums text-xs",
-                  pushesUp ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
+                  "shrink-0 tabular-nums text-xs",
+                  pushesUp
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-emerald-600 dark:text-emerald-400"
                 )}
               >
                 {pushesUp ? "+" : ""}
@@ -77,10 +91,10 @@ export function ContributionsList({
             <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
               <div
                 className={cn(
-                  "h-full rounded-full",
+                  "bar-fill h-full origin-left rounded-full",
                   pushesUp ? "bg-amber-500/80" : "bg-emerald-500/80"
                 )}
-                style={{ width: `${widthPct}%` }}
+                style={{ width: `${widthPct}%`, animationDelay: `${index * 40}ms` }}
               />
             </div>
           </li>

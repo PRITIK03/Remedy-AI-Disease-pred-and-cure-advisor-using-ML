@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { CircleAlert } from "lucide-react";
 
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -33,8 +34,9 @@ export function FormFieldWrapper({ name, label, error, hint, children }: BaseFie
         <p
           id={`${name}-error`}
           role="alert"
-          className="text-xs font-medium text-destructive"
+          className="flex items-center gap-1.5 text-xs font-medium text-destructive"
         >
+          <CircleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           {error}
         </p>
       )}
@@ -82,7 +84,7 @@ export function NumberField({
           onChange={(e) => onChange(e.target.value)}
           aria-invalid={!!error}
           aria-describedby={error ? `${name}-error` : hint ? `${name}-hint` : undefined}
-          className={cn("pr-14", error && "border-destructive focus-visible:ring-destructive")}
+          className={cn("h-10 pr-14", error && "border-destructive focus-visible:ring-destructive")}
         />
         {unit && (
           <span
@@ -124,19 +126,22 @@ export function RadioField({
         onValueChange={onChange}
         aria-invalid={!!error}
         aria-describedby={error ? `${name}-error` : hint ? `${name}-hint` : undefined}
-        className={cn("flex flex-wrap gap-x-4 gap-y-2", error && "text-destructive")}
+        className={cn("flex flex-wrap gap-2", error && "text-destructive")}
       >
         {options.map((option) => (
-          <div key={option.value} className="flex items-center gap-2">
+          <Label
+            key={option.value}
+            htmlFor={`${name}-${option.value}`}
+            title={option.description}
+            className={cn(
+              "flex min-w-0 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm font-normal transition-colors",
+              "hover:bg-accent/60 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5 has-[[data-state=checked]]:text-foreground",
+              error && "border-destructive/40"
+            )}
+          >
             <RadioGroupItem value={String(option.value)} id={`${name}-${option.value}`} />
-            <Label
-              htmlFor={`${name}-${option.value}`}
-              className="cursor-pointer font-normal peer-disabled:cursor-not-allowed"
-              title={option.description}
-            >
-              {option.label}
-            </Label>
-          </div>
+            <span className="truncate">{option.label}</span>
+          </Label>
         ))}
       </RadioGroup>
     </FormFieldWrapper>

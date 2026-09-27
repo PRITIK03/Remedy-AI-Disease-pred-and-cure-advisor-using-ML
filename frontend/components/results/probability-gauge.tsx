@@ -1,7 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { formatPercentPrecise } from "@/lib/utils";
+import { cn, formatPercentPrecise } from "@/lib/utils";
+import { probabilityLevel } from "@/components/ui/probability-status";
 
 interface ProbabilityGaugeProps {
   probability: number;
@@ -9,9 +9,21 @@ interface ProbabilityGaugeProps {
   className?: string;
 }
 
+const LEVEL_COLOR: Record<string, string> = {
+  low: "stroke-emerald-500",
+  moderate: "stroke-amber-500",
+  high: "stroke-rose-500",
+};
+
+const LEVEL_TEXT: Record<string, string> = {
+  low: "text-emerald-700 dark:text-emerald-400",
+  moderate: "text-amber-700 dark:text-amber-400",
+  high: "text-rose-700 dark:text-rose-400",
+};
+
 export function ProbabilityGauge({
   probability,
-  size = 180,
+  size = 176,
   className,
 }: ProbabilityGaugeProps) {
   const stroke = 12;
@@ -19,6 +31,7 @@ export function ProbabilityGauge({
   const circumference = 2 * Math.PI * radius;
   const clamped = Math.min(Math.max(probability, 0), 1);
   const offset = circumference * (1 - clamped);
+  const level = probabilityLevel(clamped);
 
   return (
     <div
@@ -44,14 +57,20 @@ export function ProbabilityGauge({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className={cn(
-            "transition-[stroke-dashoffset] duration-700 motion-reduce:transition-none",
-            probability >= 0.5 ? "stroke-amber-500" : "stroke-emerald-500"
-          )}
+          style={{
+            "--gauge-circumference": `${circumference}`,
+            "--gauge-offset": `${offset}`,
+          } as React.CSSProperties}
+          className={cn("gauge-arc", LEVEL_COLOR[level])}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-semibold tabular-nums">
+        <span
+          className={cn(
+            "text-3xl font-semibold tabular-nums",
+            LEVEL_TEXT[level]
+          )}
+        >
           {formatPercentPrecise(probability)}
         </span>
         <span className="text-xs text-muted-foreground">disease probability</span>

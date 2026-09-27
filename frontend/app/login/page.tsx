@@ -41,13 +41,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-16">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <Activity className="h-8 w-8 text-primary" aria-hidden="true" />
-        <h1 className="text-2xl font-semibold tracking-tight">Sign in to Remedy-AI</h1>
-        <p className="text-sm text-muted-foreground">
-          Access your cardiovascular health assessments.
-        </p>
+    <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-14 animate-page-enter md:py-20">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+          <Activity className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div>
+          <h1 className="text-balance text-2xl font-semibold tracking-tight">Sign in to Remedy-AI</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Access your cardiovascular health assessments.
+          </p>
+        </div>
       </div>
 
       <Card>
@@ -78,6 +82,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                className="h-10"
               />
             </div>
             <div className="flex flex-col gap-2">
@@ -90,6 +95,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Your password"
+                className="h-10"
               />
             </div>
           </CardContent>

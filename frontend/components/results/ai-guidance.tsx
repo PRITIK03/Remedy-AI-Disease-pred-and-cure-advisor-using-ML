@@ -113,21 +113,56 @@ export function AiGuidance({ assessmentId }: AiGuidanceProps) {
     if (state.phase === "error" && state.retriable) void load();
   };
 
+  // Explicit, honest status label shown in the section header.
+  const STATUS_LABEL: Record<GuidanceState["phase"], { text: string; className: string } | null> = {
+    idle: null,
+    loading: {
+      text: "Loading",
+      className: "border-border bg-muted/50 text-muted-foreground",
+    },
+    ready: {
+      text: "Available",
+      className:
+        "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300",
+    },
+    review: {
+      text: "Review required",
+      className:
+        "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300",
+    },
+    error: {
+      text: "Unavailable",
+      className:
+        "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300",
+    },
+  };
+  const statusBadge = STATUS_LABEL[state.phase];
+
   return (
     <Collapsible open={open} onOpenChange={handleOpenChange} className="mt-4">
       <Card>
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
-            className="flex w-full items-center justify-between px-6 py-4"
+            className="flex w-full items-center justify-between gap-2 px-6 py-4"
             aria-expanded={open}
           >
             <span className="flex items-center gap-2 font-semibold">
               <Sparkles className="h-4 w-4 text-primary" aria-hidden="true" />
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Guidance
+              </span>
               AI Health Guidance
+              {statusBadge && (
+                <span
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${statusBadge.className}`}
+                >
+                  {statusBadge.text}
+                </span>
+              )}
             </span>
             <ChevronDown
-              className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+              className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
               aria-hidden="true"
             />
           </Button>
@@ -148,7 +183,7 @@ export function AiGuidance({ assessmentId }: AiGuidanceProps) {
 
             {state.phase === "error" && (
               <div className="space-y-2 text-sm">
-                <p className="text-muted-foreground">{state.message}</p>
+                <p role="alert" className="text-muted-foreground">{state.message}</p>
                 {state.retriable && (
                   <Button variant="outline" size="sm" onClick={retry}>
                     Retry
