@@ -1,4 +1,4 @@
-# Remedy-AI — AI-Assisted Cardiovascular Health Assessment
+# Remedy-AI — AI-Assisted Cardiovascular Health Assessment.
 
 An **educational/research prototype**: a full-stack, AI-assisted cardiovascular
 health **decision-support** system. A machine-learning model estimates a
