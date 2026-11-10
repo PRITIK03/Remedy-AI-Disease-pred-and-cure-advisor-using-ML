@@ -30,7 +30,10 @@ from werkzeug.exceptions import HTTPException
 BASE_DIR = Path(__file__).resolve().parent
 
 # Which model generation to serve: v2 (modern, default) or v1 (legacy).
-MODEL_VERSION = os.getenv("MODEL_VERSION", "v2")
+MODEL_VERSION = os.getenv("MODEL_VERSION", "v2").lower()
+ALLOW_LEGACY_FALLBACK = (
+    os.getenv("ALLOW_LEGACY_FALLBACK", "0").strip().lower() in {"1", "true", "yes", "on"}
+)
 
 # Legacy artifacts sit flat in the repository root. MODEL_DIR lets a future
 # phase relocate them (e.g. models/) without code changes.
@@ -135,7 +138,8 @@ try:
 except Exception as exc:  # noqa: BLE001 - app must still boot without artifact
     logger.warning(
         "Modern v2 pipeline not available (%s: %s); /predict will fall back to "
-        "legacy v1 behavior. Run `python -m ml.training.train` to build it.",
+        "legacy v1 behavior only when ALLOW_LEGACY_FALLBACK=true. Run "
+        "`python -m ml.training.train` to build it.",
         type(exc).__name__,
         exc,
     )
@@ -290,7 +294,11 @@ def predict() -> str:
     """
     try:
         values = parse_features(request.form)
-        if MODEL_VERSION != "v1" and modern_predictor is not None:
+
+        if MODEL_VERSION == "v1":
+            prediction_prob = predict_risk_probability(values)
+            logger.info("v1 prediction: legacy probability=%.4f", prediction_prob)
+        elif modern_predictor is not None:
             result = modern_predictor.predict(values)
             prediction_prob = result["disease_probability"]
             logger.info(
@@ -298,19 +306,27 @@ def predict() -> str:
                 prediction_prob,
                 result["predicted_disease"],
             )
-        else:
-            # Legacy path — probability is P(healthy) in the legacy semantic
-            # (documented inversion, docs/legacy-ml-baseline.md §6).
+        elif ALLOW_LEGACY_FALLBACK:
+            logger.warning(
+                "Modern v2 predictor unavailable; using legacy fallback because "
+                "ALLOW_LEGACY_FALLBACK=true. This is intentionally opt-in and not default."
+            )
             prediction_prob = predict_risk_probability(values)
+        else:
+            raise RuntimeError(
+                "The modern v2 prediction pipeline is unavailable and legacy fallback "
+                "is disabled. Set MODEL_VERSION=v1 for the legacy regression path or "
+                "rebuild the v2 model."
+            )
     except ValueError as exc:
         logger.info("Rejected prediction request: %s", exc)
         return render_template("index.html", prediction_result=f"Invalid input: {exc}")
-    except Exception:  # noqa: BLE001 - log full detail, show generic message
-        logger.exception("Prediction failed")
+    except Exception as exc:  # noqa: BLE001 - log full detail, show generic message
+        logger.exception("Prediction failed: %s", exc)
         return render_template(
             "index.html",
-            prediction_result="Something went wrong while computing the prediction. "
-            "Please try again.",
+            prediction_result="Prediction is currently unavailable because the model service is not ready. "
+            "Please try again or contact the administrator.",
         )
 
     predicted_risk = prediction_prob * 100

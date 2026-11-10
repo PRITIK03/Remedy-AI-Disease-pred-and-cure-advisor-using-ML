@@ -15,19 +15,19 @@ const LEVEL_STYLES: Record<
 > = {
   low: {
     badge:
-      "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300",
+      "border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm shadow-emerald-200/30 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-300",
     dot: "bg-emerald-500",
     label: "Lower probability",
   },
   moderate: {
     badge:
-      "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300",
+      "border-amber-200 bg-amber-50 text-amber-900 shadow-sm shadow-amber-200/30 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-300",
     dot: "bg-amber-500",
     label: "Moderate probability",
   },
   high: {
     badge:
-      "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300",
+      "border-rose-200 bg-rose-50 text-rose-900 shadow-sm shadow-rose-200/30 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-300",
     dot: "bg-rose-500",
     label: "Higher probability",
   },
