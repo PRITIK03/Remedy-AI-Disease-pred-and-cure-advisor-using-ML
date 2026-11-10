@@ -1,0 +1,117 @@
+# Remedy AI — Clinical Intelligence for Heart Risk Assessment
+
+Remedy AI is a premium AI-powered clinical decision-support platform built to evaluate cardiovascular risk from structured patient inputs, explain the model's reasoning, and surface safe, actionable guidance for care teams.
+
+It is designed as a serious decision-support system: explainable, operationally clear, and enterprise-ready — not a generic demo dashboard.
+
+> This project is for research and product exploration. It is not a medical device, not a diagnosis, and not clinical-grade risk validation.
+
+## Why this product stands out
+
+- Premium health-tech product feel instead of a default prototype aesthetic
+- Explainability-first experience for every assessment
+- Trust-building workflow with user review and safe fallback behavior
+- Designed as a platform pattern that can scale into clinical operations, not just a model demo
+- Clear separation between model output and human medical judgment
+
+## What the system does
+
+- Estimates cardiovascular disease risk from structured assessment inputs
+- Explains which features influenced the prediction most
+- Produces AI-guided recommendations grounded in health information workflows
+- Supports assessment history, report review, and risk tracking over time
+- Exposes enterprise-style product patterns: analytics, summaries, risk views, and workflow clarity
+
+## Product architecture
+
+```text
+User / Care Team
+      │
+      ▼
+Next.js product UI
+  - dashboard overview
+  - assessment intake
+  - result interpretation
+  - history and report flows
+      │
+      ▼
+FastAPI backend
+  - auth and session security
+  - assessment orchestration
+  - guidance and explanation APIs
+  - FHIR-ready export paths
+      │
+      ▼
+ML + AI layer
+  - model inference
+  - feature impact explanations
+  - AI guidance pipeline
+      │
+      ▼
+Data & services
+  - PostgreSQL / Redis
+  - vector-search / knowledge retrieval
+  - storage and audit-friendly workflows
+```
+
+## Stack
+
+- Frontend: Next.js, TypeScript, Tailwind, shadcn-inspired component system
+- Backend: FastAPI, Python, SQLAlchemy, Alembic
+- ML: scikit-learn, explainability workflows, calibrated risk models
+- Data: Postgres + pgvector, Redis, storage integration patterns
+- Product patterns: SaaS dashboard, assessment flow, analytics, secure review UI
+
+## Getting started
+
+### Prerequisites
+
+- Python 3.12+
+- Node 22+
+- Docker for local infra
+
+### Quick setup
+
+```bash
+# Backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+
+# Frontend
+cd frontend
+npm install
+npm run dev
+```
+
+### Full local stack
+
+```bash
+docker compose up -d postgres redis
+cp .env.example .env
+# configure required environment values
+```
+
+## Product vision
+
+Remedy AI is meant to feel like a modern clinical intelligence product: calm, precise, enterprise-aware, and built around trust. The interface and architecture are designed to move beyond a raw ML prediction into a workflow where people can understand risk, inspect reasoning, and act with context.
+
+## Repository structure
+
+```text
+backend/          API, auth, services, assessment logic
+frontend/         Premium product UI for web application
+ml/               Model training and inference modules
+rag/              Knowledge retrieval and guidance assets
+scripts/          Data and validation workflows
+docs/             Product, technical, and deployment docs
+```
+
+## Important note
+
+This project is an educational and product exploration system. It is not a regulated clinical tool and should not be treated as a medical diagnosis or patient care decision system.
+
+## License
+
+MIT
+
