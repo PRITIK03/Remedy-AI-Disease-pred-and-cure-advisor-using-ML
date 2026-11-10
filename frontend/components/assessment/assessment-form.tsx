@@ -207,10 +207,9 @@ const STEPS: StepDefinition[] = [
   },
 ];
 
-const TOTAL_STEPS = STEPS.length; // data steps; a final review step follows
+const TOTAL_STEPS = STEPS.length;
 const REVIEW_STEP = STEPS.length;
 
-/** Real request phases — no fake progress percentages. */
 type SubmitPhase = "validating" | "analyzing" | "preparing" | null;
 
 export function AssessmentForm() {
@@ -263,7 +262,6 @@ export function AssessmentForm() {
 
   const goBack = () => setStepIndex((i) => Math.max(i - 1, 0));
 
-  /** Readable value for a field, or null when empty (for the review step). */
   const reviewValue = (name: string): string | null => {
     const raw = values[name] ?? "";
     if (raw === "") return null;
@@ -281,7 +279,6 @@ export function AssessmentForm() {
   const handleSubmit = async () => {
     setSubmitPhase("validating");
     setSubmitError(null);
-    // Full validation across all steps before submission.
     const result = validateAssessment(values);
     if (!result.ok) {
       setErrors(result.errors);
@@ -324,13 +321,9 @@ export function AssessmentForm() {
           : "Analyze Assessment";
 
   return (
-    <Card>
-      <CardHeader>
-        {/* Step indicator */}
-        <ol
-          className="flex items-center gap-2"
-          aria-label={`Step ${stepIndex + 1} of ${TOTAL_STEPS + 1}`}
-        >
+    <Card className="overflow-hidden border-border/80 bg-card/80 shadow-[0_24px_70px_-35px_rgba(15,23,42,0.45)]">
+      <CardHeader className="border-b border-border/70 bg-gradient-to-r from-primary/5 via-transparent to-cyan-500/5 pb-5">
+        <ol className="flex items-center gap-2" aria-label={`Step ${stepIndex + 1} of ${TOTAL_STEPS + 1}`}>
           {STEPS.map((s, i) => {
             const isDone = i < stepIndex;
             const isCurrent = i === stepIndex;
@@ -341,8 +334,8 @@ export function AssessmentForm() {
                   className={cn(
                     "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium transition-colors",
                     isDone && "border-primary bg-primary text-primary-foreground",
-                    isCurrent && "border-primary text-primary",
-                    !isDone && !isCurrent && "border-border text-muted-foreground"
+                    isCurrent && "border-primary bg-primary/10 text-primary",
+                    !isDone && !isCurrent && "border-border bg-background text-muted-foreground"
                   )}
                 >
                   {isDone ? (
@@ -371,15 +364,14 @@ export function AssessmentForm() {
               </li>
             );
           })}
-          {/* Review chip terminates the indicator */}
           <li className="flex min-w-0 items-center gap-2">
             <span
               aria-current={stepIndex === REVIEW_STEP ? "step" : undefined}
               className={cn(
                 "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium transition-colors",
                 stepIndex === REVIEW_STEP
-                  ? "border-primary text-primary"
-                  : "border-border text-muted-foreground"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-background text-muted-foreground"
               )}
             >
               <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
@@ -387,31 +379,25 @@ export function AssessmentForm() {
             <span
               className={cn(
                 "hidden text-sm sm:inline",
-                stepIndex === REVIEW_STEP
-                  ? "font-medium text-foreground"
-                  : "text-muted-foreground"
+                stepIndex === REVIEW_STEP ? "font-medium text-foreground" : "text-muted-foreground"
               )}
             >
               Review
             </span>
           </li>
         </ol>
-        <Progress
-          value={stepIndex === REVIEW_STEP ? 100 : progress}
-          className="mt-4 h-1.5"
-          aria-hidden="true"
-        />
-        <CardTitle className="mt-3 text-xl">
+        <Progress value={stepIndex === REVIEW_STEP ? 100 : progress} className="mt-4 h-1.5" aria-hidden="true" />
+        <CardTitle className="mt-3 text-xl tracking-tight">
           {stepIndex === REVIEW_STEP ? "Review & Analyze" : step.title}
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="max-w-xl">
           {stepIndex === REVIEW_STEP
             ? "All values below are ready to send to the model."
             : step.description}
         </CardDescription>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="pt-5">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -423,13 +409,11 @@ export function AssessmentForm() {
           <fieldset disabled={submitting} className="space-y-5">
             <legend className="sr-only">{step.title}</legend>
             {stepIndex === REVIEW_STEP ? (
-              /* Review step: readable summary of the entered values. */
               <div aria-busy={submitting} className="animate-page-enter">
                 <p className="mb-4 text-sm text-muted-foreground">
-                  Check everything before running the model — use Back to edit
-                  any value.
+                  Check everything before running the model — use Back to edit any value.
                 </p>
-                <dl className="grid gap-x-6 gap-y-2 rounded-lg border border-border bg-muted/30 p-4 sm:grid-cols-2">
+                <dl className="grid gap-x-6 gap-y-2 rounded-2xl border border-border/80 bg-muted/30 p-4 sm:grid-cols-2">
                   {STEPS.flatMap((s) => s.fields).map((field) => {
                     const label = prettyFeatureName(`numeric__${field}`)
                       .replace(/ \(male\)$/, "")
@@ -440,12 +424,12 @@ export function AssessmentForm() {
                     return (
                       <div
                         key={field}
-                        className="flex items-baseline justify-between gap-3 border-b border-border/60 py-1.5 last:border-0 sm:border-0"
+                        className="flex items-baseline justify-between gap-3 border-b border-border/60 py-2.5 last:border-0 sm:border-0"
                       >
                         <dt className="text-sm text-muted-foreground">{label}</dt>
                         <dd
                           className={cn(
-                            "text-sm font-medium tabular-nums",
+                            "text-sm font-medium tabular-nums text-foreground",
                             value === null && "text-destructive"
                           )}
                         >
@@ -471,30 +455,31 @@ export function AssessmentForm() {
             {submitError && (
               <div
                 role="alert"
-                className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                className="flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
               >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 <span>{submitError}</span>
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+            <div className="flex items-center justify-between gap-3 border-t border-border/80 pt-4">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={goBack}
                 disabled={stepIndex === 0 || submitting}
+                className="rounded-full"
               >
                 <ArrowLeft className="size-4" aria-hidden="true" /> Back
               </Button>
 
               {stepIndex < REVIEW_STEP ? (
-                <Button type="submit">
-                  {stepIndex === REVIEW_STEP - 1 ? "Review" : "Continue"}{" "}
+                <Button type="submit" className="rounded-full shadow-sm shadow-primary/10">
+                  {stepIndex === REVIEW_STEP - 1 ? "Review" : "Continue"} {" "}
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </Button>
               ) : (
-                <Button type="submit" disabled={submitting}>
+                <Button type="submit" disabled={submitting} className="rounded-full shadow-sm shadow-primary/10">
                   {submitting && (
                     <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   )}
@@ -503,7 +488,6 @@ export function AssessmentForm() {
               )}
             </div>
           </fieldset>
-          {/* Screen-reader announcement of the current async phase. */}
           <p className="sr-only" role="status" aria-live="polite">
             {submitting ? submitLabel : ""}
           </p>

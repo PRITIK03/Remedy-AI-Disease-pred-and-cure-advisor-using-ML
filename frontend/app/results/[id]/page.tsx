@@ -69,9 +69,7 @@ function ResultsContent({
       setExplError(null);
     } catch (err) {
       setExplError(
-        err instanceof ApiError
-          ? err.message
-          : "Feature contributions are unavailable right now."
+        err instanceof ApiError ? err.message : "Feature contributions are unavailable right now."
       );
     } finally {
       setExplLoading(false);
@@ -90,9 +88,7 @@ function ResultsContent({
         setAssessment(data);
         setError(null);
       } catch (err) {
-        setError(
-          err instanceof ApiError ? err.message : "Failed to load the assessment."
-        );
+        setError(err instanceof ApiError ? err.message : "Failed to load the assessment.");
       } finally {
         setLoading(false);
       }
@@ -111,9 +107,7 @@ function ResultsContent({
         }
       } catch (err) {
         if (!cancelled) {
-          setError(
-            err instanceof ApiError ? err.message : "Failed to load the assessment."
-          );
+          setError(err instanceof ApiError ? err.message : "Failed to load the assessment.");
           setLoading(false);
         }
       }
@@ -123,7 +117,6 @@ function ResultsContent({
     };
   }, [id]);
 
-  // Lazy-load contributions the first time the section is opened.
   useEffect(() => {
     if (!explOpen || explanation || explError) return;
     let cancelled = false;
@@ -139,9 +132,7 @@ function ResultsContent({
       } catch (err) {
         if (!cancelled) {
           setExplError(
-            err instanceof ApiError
-              ? err.message
-              : "Feature contributions are unavailable right now."
+            err instanceof ApiError ? err.message : "Feature contributions are unavailable right now."
           );
           setExplLoading(false);
         }
@@ -164,7 +155,7 @@ function ResultsContent({
   if (error || !assessment) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16">
-        <Card>
+        <Card className="border-border/80 bg-card/80 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-5 w-5" aria-hidden="true" />
@@ -173,10 +164,10 @@ function ResultsContent({
             <CardDescription>{error ?? "Assessment not found."}</CardDescription>
           </CardHeader>
           <CardContent className="flex gap-3">
-            <Button onClick={retry} variant="outline">
+            <Button onClick={retry} variant="outline" className="rounded-full">
               <RefreshCw className="size-4" aria-hidden="true" /> Retry
             </Button>
-            <Button asChild variant="ghost">
+            <Button asChild variant="ghost" className="rounded-full">
               <Link href="/history">Go to History</Link>
             </Button>
           </CardContent>
@@ -186,8 +177,7 @@ function ResultsContent({
   }
 
   const highProbability = assessment.predicted_disease;
-  const sourceLabel =
-    assessment.source === "report" ? "From uploaded report" : "Manual entry";
+  const sourceLabel = assessment.source === "report" ? "From uploaded report" : "Manual entry";
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 animate-page-enter md:py-10">
@@ -200,12 +190,9 @@ function ResultsContent({
         className="mb-4"
       />
 
-      {/* Header + clean metadata row */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-balance text-2xl font-semibold tracking-tight">
-            Assessment Result
-          </h1>
+          <h1 className="text-balance text-2xl font-semibold tracking-tight">Assessment Result</h1>
           <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
             <span>{formatDateTime(assessment.created_at)}</span>
             <span aria-hidden="true" className="opacity-50">·</span>
@@ -216,18 +203,16 @@ function ResultsContent({
         </div>
       </div>
 
-      {/* Main result — the gauge is the single visual anchor */}
-      <Card className="mt-6">
+      <Card className="mt-6 overflow-hidden border-border/80 bg-card/80 shadow-[0_24px_70px_-35px_rgba(15,23,42,0.45)]">
+        <div className="border-b border-border/80 bg-gradient-to-r from-primary/6 via-transparent to-cyan-500/5" />
         <CardContent className="flex flex-col items-center gap-6 py-8 sm:flex-row sm:justify-center sm:gap-12 sm:py-10">
           <ProbabilityGauge probability={assessment.disease_probability} />
           <div className="max-w-xs space-y-2 text-center sm:text-left">
-            <p className="text-sm font-medium">Model-estimated disease probability</p>
+            <p className="text-sm font-medium text-foreground">Model-estimated disease probability</p>
             <p
               className={cn(
                 "text-sm text-pretty",
-                highProbability
-                  ? "text-rose-700 dark:text-rose-400"
-                  : "text-emerald-700 dark:text-emerald-400"
+                highProbability ? "text-rose-700 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"
               )}
             >
               {highProbability
@@ -235,16 +220,14 @@ function ResultsContent({
                 : "The model estimates a lower probability of disease."}
             </p>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              A probability, not a yes/no answer. This estimate is not a
-              diagnosis — see the notes below for context and limitations.
+              A probability, not a yes/no answer. This estimate is not a diagnosis — see the notes below for context and limitations.
             </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Feature contributions */}
       <Collapsible open={explOpen} onOpenChange={setExplOpen} className="mt-4">
-        <Card>
+        <Card className="border-border/80 bg-card/80 shadow-sm">
           <CollapsibleTrigger asChild>
             <Button
               variant="ghost"
@@ -255,7 +238,7 @@ function ResultsContent({
                 <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Interpretation
                 </span>
-                <span className="font-semibold">What influenced the model?</span>
+                <span className="font-semibold text-foreground">What influenced the model?</span>
               </span>
               <ChevronDown
                 className={cn(
@@ -269,9 +252,7 @@ function ResultsContent({
           <CollapsibleContent>
             <CardContent className="pt-0">
               <p className="mb-4 text-xs text-muted-foreground">
-                Feature contributions — how much each input pushed the model&apos;s
-                estimate up (amber) or down (green). These are model
-                contributions, <strong>not causes of disease</strong>.
+                Feature contributions — how much each input pushed the model&apos;s estimate up (amber) or down (green). These are model contributions, <strong>not causes of disease</strong>.
               </p>
               <ContributionsList
                 contributions={explanation?.contributions ?? null}
@@ -280,27 +261,20 @@ function ResultsContent({
                 onRetry={retryExplanation}
               />
               {explanation && (
-                <p className="mt-4 text-xs text-muted-foreground">
-                  Method: {explanation.method}
-                </p>
+                <p className="mt-4 text-xs text-muted-foreground">Method: {explanation.method}</p>
               )}
             </CardContent>
           </CollapsibleContent>
         </Card>
       </Collapsible>
 
-      {/* AI guidance — lazy, explicit user opt-in (no LLM call on render) */}
       <AiGuidance assessmentId={assessment.id} modelProbability={assessment.disease_probability} />
 
-      {/* About this prediction */}
       <Collapsible className="mt-4">
-        <Card>
+        <Card className="border-border/80 bg-card/80 shadow-sm">
           <CollapsibleTrigger asChild>
-            <Button
-              variant="ghost"
-              className="flex w-full items-center justify-between gap-2 px-6 py-4"
-            >
-              <span className="font-semibold">About this prediction</span>
+            <Button variant="ghost" className="flex w-full items-center justify-between gap-2 px-6 py-4">
+              <span className="font-semibold text-foreground">About this prediction</span>
               <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
             </Button>
           </CollapsibleTrigger>
@@ -308,18 +282,15 @@ function ResultsContent({
             <CardContent className="space-y-2 pt-0 text-sm text-muted-foreground">
               <p className="flex items-start gap-2">
                 <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                The output is probabilistic: a model-estimated probability, not
-                a yes/no medical answer.
+                The output is probabilistic: a model-estimated probability, not a yes/no medical answer.
               </p>
               <Separator />
               <p>
-                The model was trained on a small historical dataset (303
-                records). Its estimates carry real uncertainty.
+                The model was trained on a small historical dataset (303 records). Its estimates carry real uncertainty.
               </p>
               <Separator />
               <p>
-                This result is <strong>not a diagnosis</strong>. Real health
-                decisions require a qualified healthcare professional.
+                This result is <strong>not a diagnosis</strong>. Real health decisions require a qualified healthcare professional.
               </p>
             </CardContent>
           </CollapsibleContent>
@@ -327,17 +298,16 @@ function ResultsContent({
       </Collapsible>
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <Button asChild>
+        <Button asChild className="rounded-full shadow-sm shadow-primary/10">
           <Link href="/assessment">
             <ClipboardList className="size-4" aria-hidden="true" /> New Assessment
           </Link>
         </Button>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" className="rounded-full border-border/80 bg-background/70">
           <Link href="/history">View History</Link>
         </Button>
       </div>
 
-      {/* Interoperability (Phase 8): read-only FHIR R4 export. */}
       <p className="mt-4 text-xs text-muted-foreground">
         Need this in a healthcare system?{" "}
         <a
@@ -346,9 +316,7 @@ function ResultsContent({
         >
           Export as FHIR R4
         </a>{" "}
-        — a read-only Bundle of Patient, Observation, and DiagnosticReport
-        resources generated from this assessment. It is not an EHR export and
-        contains no diagnosis.
+        — a read-only Bundle of Patient, Observation, and DiagnosticReport resources generated from this assessment. It is not an EHR export and contains no diagnosis.
       </p>
     </div>
   );
