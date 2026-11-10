@@ -20,13 +20,13 @@ interface BaseFieldProps {
 
 export function FormFieldWrapper({ name, label, error, hint, children }: BaseFieldProps) {
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={name} className="text-sm font-medium">
+    <div className="space-y-2">
+      <Label htmlFor={name} className="text-sm font-medium text-foreground">
         {label}
       </Label>
       {children}
       {hint && !error && (
-        <p id={`${name}-hint`} className="text-xs text-muted-foreground">
+        <p id={`${name}-hint`} className="text-xs leading-5 text-muted-foreground">
           {hint}
         </p>
       )}
@@ -84,11 +84,14 @@ export function NumberField({
           onChange={(e) => onChange(e.target.value)}
           aria-invalid={!!error}
           aria-describedby={error ? `${name}-error` : hint ? `${name}-hint` : undefined}
-          className={cn("h-10 pr-14", error && "border-destructive focus-visible:ring-destructive")}
+          className={cn(
+            "h-11 rounded-xl border-border/80 bg-background/70 pr-14 text-sm shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/20",
+            error && "border-destructive/60 focus-visible:ring-destructive/20"
+          )}
         />
         {unit && (
           <span
-            className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground"
+            className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-muted-foreground"
             aria-hidden="true"
           >
             {unit}
@@ -126,7 +129,7 @@ export function RadioField({
         onValueChange={onChange}
         aria-invalid={!!error}
         aria-describedby={error ? `${name}-error` : hint ? `${name}-hint` : undefined}
-        className={cn("flex flex-wrap gap-2", error && "text-destructive")}
+        className={cn("grid gap-2 sm:grid-cols-2", error && "text-destructive")}
       >
         {options.map((option) => (
           <Label
@@ -134,8 +137,8 @@ export function RadioField({
             htmlFor={`${name}-${option.value}`}
             title={option.description}
             className={cn(
-              "flex min-w-0 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm font-normal transition-colors",
-              "hover:bg-accent/60 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5 has-[[data-state=checked]]:text-foreground",
+              "flex min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-border/80 bg-card/60 px-3 py-2.5 text-sm font-normal text-foreground transition-all duration-200 hover:border-primary/30 hover:bg-primary/5",
+              "has-[[data-state=checked]]:border-primary/50 has-[[data-state=checked]]:bg-primary/5 has-[[data-state=checked]]:shadow-sm has-[[data-state=checked]]:shadow-primary/5",
               error && "border-destructive/40"
             )}
           >

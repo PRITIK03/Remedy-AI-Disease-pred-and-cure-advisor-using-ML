@@ -37,9 +37,15 @@ export function ProbabilityGauge({
     <div
       role="img"
       aria-label={`Model-estimated disease probability ${formatPercentPrecise(clamped)}`}
-      className={cn("relative inline-flex items-center justify-center", className)}
+      className={cn("relative inline-flex items-center justify-center drop-shadow-[0_16px_24px_rgba(15,23,42,0.12)]", className)}
     >
-      <svg width={size} height={size} className="-rotate-90">
+      <svg width={size} height={size} className="-rotate-90 overflow-visible">
+        <defs>
+          <linearGradient id="gaugeStroke" x1="0%" x2="100%" y1="0%" y2="100%">
+            <stop offset="0%" stopColor={level === "low" ? "#10b981" : level === "moderate" ? "#f59e0b" : "#f43f5e"} />
+            <stop offset="100%" stopColor={level === "low" ? "#34d399" : level === "moderate" ? "#fbbf24" : "#fb7185"} />
+          </linearGradient>
+        </defs>
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -62,18 +68,14 @@ export function ProbabilityGauge({
             "--gauge-offset": `${offset}`,
           } as React.CSSProperties}
           className={cn("gauge-arc", LEVEL_COLOR[level])}
+          stroke="url(#gaugeStroke)"
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span
-          className={cn(
-            "text-3xl font-semibold tabular-nums",
-            LEVEL_TEXT[level]
-          )}
-        >
+        <span className={cn("text-3xl font-semibold tabular-nums leading-none", LEVEL_TEXT[level])}>
           {formatPercentPrecise(probability)}
         </span>
-        <span className="text-xs text-muted-foreground">disease probability</span>
+        <span className="mt-2 text-xs text-muted-foreground">disease probability</span>
       </div>
     </div>
   );
