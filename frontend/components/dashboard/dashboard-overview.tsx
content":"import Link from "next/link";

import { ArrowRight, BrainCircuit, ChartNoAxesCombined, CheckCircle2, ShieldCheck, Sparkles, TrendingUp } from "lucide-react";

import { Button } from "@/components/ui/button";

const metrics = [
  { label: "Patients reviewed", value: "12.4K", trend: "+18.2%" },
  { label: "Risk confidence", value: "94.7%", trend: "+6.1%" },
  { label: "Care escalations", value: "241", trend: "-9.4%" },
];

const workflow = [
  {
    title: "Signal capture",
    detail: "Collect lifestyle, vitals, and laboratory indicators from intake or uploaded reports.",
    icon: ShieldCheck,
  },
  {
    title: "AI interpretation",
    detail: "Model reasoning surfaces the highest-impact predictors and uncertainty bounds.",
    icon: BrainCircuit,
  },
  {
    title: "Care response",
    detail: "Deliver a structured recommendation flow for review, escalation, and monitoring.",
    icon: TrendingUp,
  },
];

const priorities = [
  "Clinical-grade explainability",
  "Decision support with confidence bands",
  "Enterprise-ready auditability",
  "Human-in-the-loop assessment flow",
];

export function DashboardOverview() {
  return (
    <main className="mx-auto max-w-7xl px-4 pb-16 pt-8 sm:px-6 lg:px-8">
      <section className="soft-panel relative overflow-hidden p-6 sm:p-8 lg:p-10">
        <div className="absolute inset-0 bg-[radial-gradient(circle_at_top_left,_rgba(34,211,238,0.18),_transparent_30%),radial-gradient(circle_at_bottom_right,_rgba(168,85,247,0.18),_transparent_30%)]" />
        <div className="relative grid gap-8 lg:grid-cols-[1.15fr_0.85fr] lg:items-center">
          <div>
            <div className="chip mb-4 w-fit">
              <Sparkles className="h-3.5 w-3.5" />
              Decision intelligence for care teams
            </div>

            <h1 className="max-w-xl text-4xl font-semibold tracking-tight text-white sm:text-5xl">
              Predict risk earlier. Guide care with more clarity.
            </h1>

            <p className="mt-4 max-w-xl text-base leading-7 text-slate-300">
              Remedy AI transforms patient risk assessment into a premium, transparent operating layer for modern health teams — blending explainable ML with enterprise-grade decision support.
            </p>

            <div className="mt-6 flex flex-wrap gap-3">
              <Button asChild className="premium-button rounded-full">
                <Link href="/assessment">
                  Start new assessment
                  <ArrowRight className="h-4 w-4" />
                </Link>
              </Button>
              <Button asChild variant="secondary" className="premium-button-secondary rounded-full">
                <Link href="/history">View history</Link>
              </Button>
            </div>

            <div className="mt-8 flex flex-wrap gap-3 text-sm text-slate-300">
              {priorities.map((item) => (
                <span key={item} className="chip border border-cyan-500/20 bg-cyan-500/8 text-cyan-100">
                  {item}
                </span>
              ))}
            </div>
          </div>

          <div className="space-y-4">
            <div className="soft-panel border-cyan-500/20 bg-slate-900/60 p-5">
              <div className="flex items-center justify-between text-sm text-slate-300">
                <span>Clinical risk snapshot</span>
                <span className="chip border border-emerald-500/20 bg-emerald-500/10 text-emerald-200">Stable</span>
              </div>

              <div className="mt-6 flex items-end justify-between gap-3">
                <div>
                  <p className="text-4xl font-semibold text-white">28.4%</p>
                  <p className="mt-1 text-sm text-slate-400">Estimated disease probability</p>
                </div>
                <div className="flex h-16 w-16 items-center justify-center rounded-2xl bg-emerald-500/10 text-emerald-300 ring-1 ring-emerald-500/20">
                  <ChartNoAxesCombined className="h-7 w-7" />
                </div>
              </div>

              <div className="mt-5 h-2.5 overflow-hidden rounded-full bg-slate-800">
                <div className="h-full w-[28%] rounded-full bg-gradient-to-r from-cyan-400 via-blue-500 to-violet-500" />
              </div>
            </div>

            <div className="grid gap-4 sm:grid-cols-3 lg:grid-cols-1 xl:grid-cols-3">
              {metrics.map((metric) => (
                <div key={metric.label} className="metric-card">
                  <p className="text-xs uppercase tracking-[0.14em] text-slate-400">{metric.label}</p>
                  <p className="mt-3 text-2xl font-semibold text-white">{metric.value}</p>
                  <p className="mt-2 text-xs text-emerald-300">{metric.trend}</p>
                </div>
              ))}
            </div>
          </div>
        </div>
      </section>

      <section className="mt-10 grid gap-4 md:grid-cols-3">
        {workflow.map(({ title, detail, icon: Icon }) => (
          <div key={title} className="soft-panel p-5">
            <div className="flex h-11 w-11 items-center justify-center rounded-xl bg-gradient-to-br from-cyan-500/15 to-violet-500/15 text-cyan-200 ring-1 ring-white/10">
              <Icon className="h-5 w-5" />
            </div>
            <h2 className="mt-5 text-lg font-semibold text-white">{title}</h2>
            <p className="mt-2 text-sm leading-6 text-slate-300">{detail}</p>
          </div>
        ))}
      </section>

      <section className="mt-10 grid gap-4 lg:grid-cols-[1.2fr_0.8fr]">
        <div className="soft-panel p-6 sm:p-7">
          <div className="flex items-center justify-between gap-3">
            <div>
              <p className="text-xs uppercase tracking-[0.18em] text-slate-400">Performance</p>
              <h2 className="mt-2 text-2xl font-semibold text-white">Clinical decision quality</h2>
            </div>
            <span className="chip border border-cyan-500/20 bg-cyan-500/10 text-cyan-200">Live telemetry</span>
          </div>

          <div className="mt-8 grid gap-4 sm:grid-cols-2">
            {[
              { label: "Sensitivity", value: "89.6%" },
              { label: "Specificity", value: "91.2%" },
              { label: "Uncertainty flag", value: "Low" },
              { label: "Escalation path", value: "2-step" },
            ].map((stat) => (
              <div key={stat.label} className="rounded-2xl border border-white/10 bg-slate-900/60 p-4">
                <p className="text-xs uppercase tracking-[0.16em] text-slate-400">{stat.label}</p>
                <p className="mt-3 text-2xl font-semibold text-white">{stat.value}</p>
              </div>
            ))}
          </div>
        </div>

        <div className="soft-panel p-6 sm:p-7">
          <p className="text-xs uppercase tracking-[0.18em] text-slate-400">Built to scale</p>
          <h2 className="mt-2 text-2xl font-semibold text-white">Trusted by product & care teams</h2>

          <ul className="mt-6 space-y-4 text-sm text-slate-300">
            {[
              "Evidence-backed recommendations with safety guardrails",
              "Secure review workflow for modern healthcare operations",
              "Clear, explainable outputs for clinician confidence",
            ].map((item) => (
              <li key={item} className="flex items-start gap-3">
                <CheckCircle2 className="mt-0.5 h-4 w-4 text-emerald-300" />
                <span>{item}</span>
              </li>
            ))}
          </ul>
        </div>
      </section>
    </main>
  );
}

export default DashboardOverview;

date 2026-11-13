@@ -1,0 +1,77 @@
+'use client';
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Moon, ShieldCheck, Sparkles, Sun, Zap } from "lucide-react";
+import { useTheme } from "next-themes";
+
+import { Button } from "@/components/ui/button";
+
+const navItems = [
+  { href: "/", label: "Overview" },
+  { href: "/assessment", label: "Assessment" },
+  { href: "/history", label: "History" },
+  { href: "/reports", label: "Reports" },
+];
+
+export function SiteHeader() {
+  const pathname = usePathname();
+  const { resolvedTheme, setTheme } = useTheme();
+
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
+
+  return (
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 via-blue-500 to-violet-500 shadow-[0_0_24px_rgba(59,130,246,0.5)]">
+            <ShieldCheck className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold tracking-[0.18em] text-cyan-200/80 uppercase">
+              Remedy AI
+            </p>
+            <p className="text-xs text-slate-400">Clinical Intelligence</p>
+          </div>
+        </Link>
+
+        <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 md:flex">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={[
+                "rounded-full px-4 py-2 text-sm transition-all",
+                isActive(item.href)
+                  ? "bg-white text-slate-950 shadow-lg shadow-cyan-500/10"
+                  : "text-slate-300 hover:bg-white/5 hover:text-white",
+              ].join(" ")}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <Button asChild variant="secondary" className="hidden rounded-full border border-white/10 bg-white/5 text-slate-100 hover:bg-white/10 sm:inline-flex">
+            <Link href="/assessment">New assessment</Link>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Toggle theme"
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="rounded-full border border-white/10 bg-white/5 text-slate-100 hover:bg-white/10"
+          >
+            {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export default SiteHeader;
