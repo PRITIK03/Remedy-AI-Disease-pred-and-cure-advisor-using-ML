@@ -1,6 +1,6 @@
 # Remedy AI
 
-**Understand the estimate. Keep the human in charge.**
+**Understand the estimate. Keep the human in charge**
 
 Remedy AI is an educational cardiovascular decision-support prototype. It combines a calibrated machine-learning estimate, per-assessment feature contributions, and optional source-grounded health information in one reviewable workflow.
 
