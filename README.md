@@ -6,7 +6,7 @@ Remedy AI is an educational cardiovascular decision-support prototype. It combin
 
 > **Research prototype — not for clinical use.** Results are statistical estimates, not diagnoses or medical advice. The model has not been clinically validated. It was trained on a small, historical 303-row dataset. Read the [limitations](docs/limitations.md) and [model card](docs/model-card.md) before interpreting results.
 
-## Product principles
+## Product principles-
 
 - **One result, with its reasoning:** show the estimate alongside model contributions, not as a diagnosis.
 - **Human review before action:** extracted report values require explicit confirmation before assessment.
